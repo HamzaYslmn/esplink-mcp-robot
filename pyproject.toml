@@ -11,7 +11,7 @@ dependencies = [
     "ollama>=0.4",                      # local chat backend (ROBOT_MCP=false)
     "pillow>=10",                       # eye rendering, OLED-window emulator, GIF capture
     "python-dotenv>=1.0",              # .env loading
-    "python-esp-bridge[all]>=0.15.0",  # ESP32 OLED over Bluetooth (BlueZ on Linux, WinRT on Windows)
+    "python-esp-bridge[all]>=0.16.0",  # ESP32 OLED over Bluetooth (BlueZ on Linux, WinRT on Windows)
 ]
 
 [project.scripts]

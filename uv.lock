@@ -394,7 +394,7 @@ requires-dist = [
     { name = "ollama", specifier = ">=0.4" },
     { name = "pillow", specifier = ">=10" },
     { name = "python-dotenv", specifier = ">=1.0" },
-    { name = "python-esp-bridge", extras = ["all"], specifier = ">=0.15.0" },
+    { name = "python-esp-bridge", extras = ["all"], specifier = ">=0.16.0" },
 ]
 
 [[package]]
@@ -1150,15 +1150,15 @@ wheels = [
 
 [[package]]
 name = "python-esp-bridge"
-version = "0.15.0"
+version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bleak" },
     { name = "pyserial" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fd/3c/175f39df1c5a7efbf7b426cfd86c8da7f680091705c30b5359349cedf7b1/python_esp_bridge-0.15.0.tar.gz", hash = "sha256:8dd080ac8e2fcb3eae0b9ffe21a73964e772cd9e7acde729a792f7c6cfc7d565", size = 1731850, upload-time = "2026-06-14T23:54:01.15Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/71/9c/c97b838c0e41ad8c337352a04ecb82d22986dea607ed79e80996941dc0cf/python_esp_bridge-0.16.0.tar.gz", hash = "sha256:33f1003b38d632716fee08df0734392ccb78c56998ec43df3cabc31423ae1f5f", size = 1734544, upload-time = "2026-07-02T23:09:46.982Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/46/6d/336ea1902fb84556c3e34a7242267649b371dbc81e01f86efaf45502b589/python_esp_bridge-0.15.0-py3-none-any.whl", hash = "sha256:fe9ba56fb056959a94785f99cd0fd0e8bda4528763e3c696b11cc417c6dc5120", size = 1407570, upload-time = "2026-06-14T23:53:59.458Z" },
+    { url = "https://files.pythonhosted.org/packages/b1/40/e9e9e87a3da7ea5593575a00a4342887ee9b05808f3402b6db506782815a/python_esp_bridge-0.16.0-py3-none-any.whl", hash = "sha256:34fd119f9e9105e89cb41019bb1bc70672e23f061b31f8d1350a0df608e3d983", size = 1410806, upload-time = "2026-07-02T23:09:45.529Z" },
 ]
 
 [package.optional-dependencies]
