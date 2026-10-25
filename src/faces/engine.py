@@ -238,7 +238,7 @@ class EyeEngine:
                 self._mood_play = self._new_play(now)
                 self._begin_blink(now, _MASK)
             elif free and tic and now >= self._next_tic:  # action's own beat -> play it on the move layer
-                name = tic[0](now)                        # resolver -> a gesture name, or None to skip
+                name = tic[0](self._at(now, self._act_play))   # resolver -> a gesture name, or None to skip
                 if name:
                     self._play(name, now)
                 while self._next_tic <= now:              # stay on the period grid (synced to the overlay)
@@ -310,16 +310,13 @@ class EyeEngine:
         if paint:                                         # lids are the eye's shape -> keep them through a blink
             paint(self._draw, ex, ey, w, h, r, right)
 
-    def _draw_extras(self, now, spec, act, g):
-        """Mood decor, then the activity overlay, then a one-shot's prop on top."""
+    def _draw_extras(self, now, spec, act):
+        """Mood decor, then the activity overlay."""
         d, a = self._draw, self.ACTIONS.get(act)
         if spec.decor:                                    # the face is the action's own mood while one runs
             spec.decor(d, self.W, self.H, self._at(now, self._act_play if a and a.mood else self._mood_play), self.gx, self.gy)
         if a and a.overlay:
             a.overlay(d, self.W, self.H, self._at(now, self._act_play), self.gx, self.gy)   # pass gaze so a prop rides the face
-        m = self.GESTURES[g["kind"]] if g else None
-        if m and m.overlay:
-            m.overlay(d, self.W, self.H, _gesture_clock(g, now), self.gx, self.gy)
 
     def _render(self, now):
         with self._lock:                                 # snapshot; dicts are never mutated in place
@@ -345,5 +342,5 @@ class EyeEngine:
             for sx, openness, right in ((x0, ol, False),
                                         (x0 + self.eye_w + self.gap, or_, True)):
                 self._draw_eye(sx, y0, openness, right, tilt, bias, conv, sw, sh, breath, paint)
-        self._draw_extras(now, spec, act, g)
+        self._draw_extras(now, spec, act)
         return self._img

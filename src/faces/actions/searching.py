@@ -5,7 +5,7 @@ the light falls on can be seen. At each spot it doesn't just stop: it circles, s
 spirals in onto whatever is there, so things are discovered as the light finds them. The eyes
 follow the light, a touch ahead of it.
 
-Each search is a short story of stops, always ending with the find. A stop can be:
+Each search is a short story of stops; about one in three ends with the find. A stop can be:
   * empty   -- nothing there: the light circles and circles... and moves on;
   * junk    -- some random thing (every one generated, never the same twice): Pip leans in,
                squints, a little "nope" shake;
@@ -20,16 +20,16 @@ Each search is a short story of stops, always ending with the find. A stop can b
   * found   -- the cat, there all along, blinking back at Pip, an ear twitching! The light holds,
                it glints, a "!" pops and Pip's face lights up.
 On top of any stop the light can flicker off and on, and Pip blinks. Light and finds slip behind the
-eyes with a pixel of dark margin. The room is littered with more random things the light catches as it
-glides past. Every figure is generated: a mirrored blob of pixels, like an identicon. Stateless: every
-search, stop and object is hashed off the clock."""
+eyes with a pixel of dark margin. One thing at a time: only the spot Pip is looking at holds anything.
+Every figure is generated: a mirrored blob of pixels, like an identicon. Stateless: every search,
+stop and object is hashed off the clock."""
 import math
 from functools import lru_cache
 
 import numpy as np
 from PIL import Image, ImageDraw
 
-from ..primitives import frame, rand, smoothstep
+from ..primitives import frame, rand, rounded_rect, smoothstep
 from ..spec import Action
 
 _W, _H = 128, 64
@@ -37,37 +37,47 @@ _clock = [0.0]                                    # last frame's time, for the m
 _CYCLE = 17.0                                     # s per search
 _HOLD = {"empty": 1.5, "junk": 2.0, "hmm": 2.0, "sweep": 2.4, "recheck": 2.0, "eyes": 2.3,
          "dim": 2.2, "fake": 2.0, "found": 3.0}   # s each kind of stop is held (before fit)
-_PICK = (("empty", 0.18), ("junk", 0.2), ("hmm", 0.1), ("sweep", 0.12), ("recheck", 0.1),
-         ("eyes", 0.1), ("dim", 0.08), ("fake", 0.12))
-_SPOTS = ((9, 12), (9, 32), (9, 52), (118, 12), (118, 32), (118, 52))   # the walls either side of the eyes
-_R = 8                                            # light radius
+_PICK = (("empty", 0.08), ("junk", 0.36), ("hmm", 0.08), ("sweep", 0.08), ("recheck", 0.08),
+         ("eyes", 0.06), ("dim", 0.1), ("fake", 0.16))
+_FIND_EVERY = 3                                   # one search in each run of this many ends with the find
+_SPOTS = ((12, 13), (12, 32), (12, 51), (115, 13), (115, 32), (115, 51))   # the walls either side of the eyes
+_R = 11                                           # light radius
+_EYES = 0.9                                       # Pip's eyes, a touch smaller: more room to search
+_ICON = 1.4                                       # the cat / coin, scaled up to read in the bigger light
 _CLOSE = 1.0                                      # s the light takes to spiral in onto a thing
-_LITTER = 7                                       # random things scattered on the walls per search
 _BAYER = np.array(((0, 8, 2, 10), (12, 4, 14, 6), (3, 11, 1, 9), (15, 7, 13, 5))) / 16 + 1 / 32
 _DITHER = np.tile(_BAYER, (_H // 4, _W // 4))
 _YY, _XX = np.mgrid[0:_H, 0:_W]
 
 
+_FINDS = ("junk", "fake", "eyes", "found")       # stops where something turns up
+
+
 def _pick(c, i, last):
-    for tries in range(4):                        # no kind twice running
+    """A stop's kind: never the same twice running, and never two empty-handed stops in a row (nor
+    an empty-handed start) -- so something turns up about every 3 s."""
+    need = last is None or last not in _FINDS
+    for tries in range(6):
         u = rand(c, 2, i, tries)
         for k, p in _PICK:
             if u < p:
                 break
             u -= p
-        if k != last:
+        if k != last and (k in _FINDS or not need):
             return k
-    return "junk" if last == "empty" else "empty"
+    return "fake" if last == "junk" else "junk"
 
 
 @lru_cache(maxsize=4)
 def _story(c):
-    """[(start, end, kind, spot, travel s, junk item)] for search c: 4-5 stops, the last the find."""
-    n = 4 + int(rand(c, 1) * 2)
+    """[(start, end, kind, spot, travel s, junk item)] for search c: 5-6 stops (~3 s each); one search
+    in three ends with the find, the rest just keep looking."""
+    n = 5 + int(rand(c, 1) * 2)
     kinds = []
     for i in range(n - 1):
         kinds.append(_pick(c, i, kinds[-1] if kinds else None))
-    kinds.append("found")
+    finds = c % _FIND_EVERY == int(rand(c // _FIND_EVERY, 31) * _FIND_EVERY)   # once per run, at a random place
+    kinds.append("found" if finds else _pick(c, n - 1, kinds[-1]))
     spots, s = [], int(rand(c, 3) * 6)
     for i in range(n):
         if kinds[i] == "eyes":                    # the cat is always on the other wall
@@ -77,7 +87,8 @@ def _story(c):
         s = (s + 1 + int(rand(c, 4, i) * 5)) % 6  # never the same spot twice running
     cross = [i == 0 or (spots[i - 1][0] < 64) != (spots[i][0] < 64) for i in range(n)]   # the first may cross
     travel = [(1.6 + 0.4 * rand(c, 9, i)) if cross[i] else (0.9 + 0.3 * rand(c, 9, i)) for i in range(n)]
-    fit = (_CYCLE - sum(travel) - _HOLD["found"]) / sum(_HOLD[k] for k in kinds[:-1])   # the find keeps its time
+    keep = _HOLD["found"] if kinds[-1] == "found" else 0.0   # the find keeps its time; the rest stretch to fit
+    fit = (_CYCLE - sum(travel) - keep) / sum(_HOLD[k] for k in kinds if k != "found")
     out, t = [], 0.0
     for i, k in enumerate(kinds):
         end = t + travel[i] + _HOLD[k] * (1.0 if k == "found" else fit)
@@ -167,6 +178,9 @@ def _pose(now):
     gx, gy = (lx - 64) * 0.08, (ly - 32) * 0.12
     if _light(now)[3] == 0:
         return gx, gy, 0.15                       # the light died: blink
+    early = _caught(now)
+    if early:                                     # stumbled onto something early: startle, stare at it
+        return (early[0] - 64) * 0.08, (early[1] - 32) * 0.12, 1.12
     if kind == "eyes":
         if u < 0.25:
             return gx, gy, 0.85
@@ -215,55 +229,70 @@ def _sprite(seed, tries=0):
     return _sprite(seed, tries + 1)
 
 
-@lru_cache(maxsize=4)
-def _litter(c):
-    """[(x, y, seed)]: random things lying along the light's own path this search (so it keeps
-    running into them), clear of the stops' things, of each other and of the eyes."""
-    spots, out = [s[3] for s in _story(c)], []
-    for k in range(200):
-        if len(out) == _LITTER:
-            break
-        x, y = _light(c * _CYCLE + rand(c, 20, k) * _CYCLE)[:2]
-        x, y = x + (rand(c, 21, k) - 0.5) * 6, y + (rand(c, 22, k) - 0.5) * 6
-        if not (x < 21 or x > 107 or y < 8 or y > 56) or not (3 < x < 125 and 3 < y < 61):
-            continue                              # only out in the free margins
-        if (all(math.hypot(x - sx, y - sy) > 9 for sx, sy in spots)
-                and all(math.hypot(x - a, y - b) > 8 for a, b, _ in out)):
-            out.append((x, y, (c, 23, k)))
-    return tuple(out)
-
 
 def _icon(d, x, y, name, now=0.0):
     """A small silhouette, cut black out of the light."""
     x, y = round(x), round(y)
-    if isinstance(name, tuple):                   # a generated thing
-        d.point([(x + dx, y + dy) for dx, dy in _sprite(name)], fill=0)
-    elif name == "cat":                           # the cat's face filling the light, cut black out of it
+    s = _ICON
+    P = lambda dx, dy: (x + dx * s, y + dy * s)  # icon units -> px, scaled up
+    if isinstance(name, tuple):                   # a generated thing, each pixel a 2x2 block
+        for dx, dy in _sprite(name):
+            d.rectangle([x + 2 * dx, y + 2 * dy, x + 2 * dx + 1, y + 2 * dy + 1], fill=0)
+    elif name == "cat":                           # a simple cat: head, ears, shining eyes, a :3, whiskers
         tw = 1 if now % 2.7 < 0.12 else 0         # now and then an ear flicks
-        d.ellipse([x - 6, y - 3, x + 6, y + 5], fill=0)                          # head
-        d.polygon([(x - 6, y), (x - 5 - tw, y - 8 + tw), (x - 1, y - 3)], fill=0)   # ears
-        d.polygon([(x + 6, y), (x + 5, y - 8), (x + 1, y - 3)], fill=0)
-        d.line([(x - 4 - tw, y - 5 + tw), (x - 4, y - 3)], fill=1)               # the light through its ears
-        d.line([(x + 4, y - 5), (x + 4, y - 3)], fill=1)
+        d.ellipse([*P(-6, -3), *P(6, 5)], fill=0)                                # head
+        d.polygon([P(-6, 0), P(-5 - tw, -8 + tw), P(-1, -3)], fill=0)            # ears
+        d.polygon([P(6, 0), P(5, -8), P(1, -3)], fill=0)
         if now % 3.2 > 0.15:                      # eyes shining back, a slow blink now and then
-            d.rectangle([x - 4, y, x - 3, y + 1], fill=1)
-            d.rectangle([x + 3, y, x + 4, y + 1], fill=1)
+            d.ellipse([*P(-4, 0), *P(-2, 2)], fill=1)
+            d.ellipse([*P(2, 0), *P(4, 2)], fill=1)
         else:
-            d.line([(x - 4, y + 1), (x - 3, y + 1)], fill=1)
-            d.line([(x + 3, y + 1), (x + 4, y + 1)], fill=1)
-        d.point([(x, y + 2), (x - 2, y + 3), (x - 1, y + 4), (x + 1, y + 4), (x + 2, y + 3)], fill=1)   # nose, a little w
+            d.line([P(-4, 1), P(-2, 1)], fill=1)
+            d.line([P(2, 1), P(4, 1)], fill=1)
+        d.line([P(-2, 3), P(-1, 4), P(0, 3), P(1, 4), P(2, 3)], fill=1)          # the :3 mouth
         for sgn in (-1, 1):                       # whiskers, reaching out across the light
-            d.line([(x + sgn * 6, y + 2), (x + sgn * 9, y + 1)], fill=0)
-            d.line([(x + sgn * 6, y + 3), (x + sgn * 9, y + 4)], fill=0)
+            d.line([P(sgn * 6, 2), P(sgn * 9, 1)], fill=0)
+            d.line([P(sgn * 6, 3), P(sgn * 9, 4)], fill=0)
     elif name == "coin":
-        d.ellipse([x - 2, y - 2, x + 2, y + 2], outline=0)
+        d.ellipse([*P(-2.5, -2.5), *P(2.5, 2.5)], outline=0, width=2)
 
 
-def _thing(kind, u, tr, junk):
-    """What's at this stop right now, or None."""
-    if kind == "eyes":
-        return "cat" if 1.1 < u < 1.7 else None
-    return {"junk": junk, "fake": "coin", "found": "cat"}.get(kind)
+_HIDES = {"fake": "coin", "found": "cat"}         # what a stop hides in the dark (junk: its own random thing)
+
+
+def _hidden(c):
+    """[(stop index, x, y, thing)]: everything this search hides in the dark, there all along -- the
+    light only reveals it, so things slide into and out of view as the light passes."""
+    return [(j, sx, sy, junk if kind == "junk" else _HIDES[kind])
+            for j, (_, _, kind, (sx, sy), _, junk) in enumerate(_story(c)) if kind == "junk" or kind in _HIDES]
+
+
+def _things(c, i, tr, u):
+    """[(x, y, thing)] in the room right now: this search's, plus the last one's final thing while the
+    light is still leaving it (so it slides out of the light rather than vanishing)."""
+    at = {}                                       # one thing per spot: the next one due there, else the last found
+    for j, x, y, th in _hidden(c):
+        k = at.get((x, y))
+        if k is None or (k[0] < i <= j) or (j < i and k[0] < j):
+            at[(x, y)] = (j, th)
+    out = [(x, y, th) for (x, y), (_, th) in at.items()]
+    if i == 0 and u < tr:
+        prev = _hidden(c - 1)
+        if prev and prev[-1][0] == len(_story(c - 1)) - 1 and all((x, y) != prev[-1][1:3] for x, y, _ in out):
+            out.append(prev[-1][1:])
+    return out
+
+
+def _caught(now):
+    """(x, y) of a thing the light has stumbled onto before reaching its stop -- an early find -- else None."""
+    c, i, (t0, t1, kind, spot, tr, _), u = _stop(now)
+    x, y, r, lvl = _light(now)
+    if not lvl:
+        return None
+    for j, hx, hy, _ in _hidden(c):
+        if j > i and math.hypot(hx - x, hy - y) < r - 3:
+            return hx, hy
+    return None
 
 
 def _scene(now):
@@ -279,12 +308,10 @@ def _scene(now):
             m = (dist < r) & (_DITHER < 0.3)      # weak batteries: a thin, grainy pool
         cut = Image.new("1", (_W, _H), 1)
         cd = ImageDraw.Draw(cut)
-        for lx, ly, seed in _litter(c):           # whatever the light happens to pass over
-            if math.hypot(lx - x, ly - y) < r + 5:
-                _icon(cd, lx, ly, seed)
-        thing = _thing(kind, u, tr, junk)
-        if thing:
-            _icon(cd, sx, sy, thing, now)
+        for hx, hy, thing in _things(c, i, tr, u):   # all hidden in the dark; the light only reveals them
+            _icon(cd, hx, hy, thing, now)
+        if kind == "eyes" and 1.1 < u < 1.7:       # the cat caught for a blink before it bolts
+            _icon(cd, sx, sy, "cat", now)
         m &= np.asarray(cut, dtype=bool)
     if kind == "eyes" and 0.15 < u < 1.1 and not 0.5 < u < 0.6:   # glowing eyes in the dark, blinking once
         m[sy - 1, sx - 2] = m[sy - 1, sx + 2] = True
@@ -345,18 +372,42 @@ def _mood():
     c, i, (t0, t1, kind, _, tr, _j), u = _stop(_clock[0])
     if kind == "found" and u > tr + _CLOSE:
         return "happy"
-    if kind == "eyes" and 0.25 < u < 1.6:
+    if (kind == "eyes" and 0.25 < u < 1.6) or _caught(_clock[0]):
         return "surprised"
     return "attentive"
 
 
-ACTION = Action("searching", mood=_mood, pose=_pose, overlay=_overlay)   # the face follows the story
+def _eyes(d, x, y, w, h, right, now):
+    """Pip's eyes a little smaller (more room to search), still wearing the mood's lids."""
+    from .. import MOODS                          # lazy: the registries import this module
+    d.rectangle([x - 2, y - 2, x + w + 2, y + h + 2], fill=0)
+    sw, sh = w * _EYES, h * _EYES
+    sx, sy = (x if right else x + w - sw), y + (h - sh) / 2       # shrink toward the nose: the gap between the eyes keeps its size
+    r = min(sw, sh) / 3
+    rounded_rect(d, sx, sy, sw, sh, r, 1)
+    paint = MOODS[_mood()].paint
+    if paint:
+        paint(d, sx, sy, sw, sh, r, right)
 
 
-if __name__ == "__main__":                        # ponytail check: every search fits its slot and ends on the find
+ACTION = Action("searching", mood=_mood, pose=_pose, overlay=_overlay, eyes=_eyes)   # the face follows the story
+
+
+if __name__ == "__main__":                        # ponytail check: every search fits its slot; the find is a treat
+    found = 0
     for c in range(300):
         st = _story(c)
-        assert abs(st[-1][1] - _CYCLE) < 1e-6 and st[-1][2] == "found", (c, st[-1])
+        assert abs(st[-1][1] - _CYCLE) < 1e-6, (c, st[-1])
+        assert all(k != "found" for _, _, k, *_ in st[:-1]), c   # the cat is only ever found at the end
+        found += st[-1][2] == "found"
         assert all(a[3] != b[3] for a, b in zip(st, st[1:])), c
         assert all(a[2] != b[2] for a, b in zip(st, st[1:])), c
+        assert st[0][2] in _FINDS, c                                   # opens with a find
+        assert all(a[2] in _FINDS or b[2] in _FINDS for a, b in zip(st, st[1:])), c   # never two empty stops running
+    assert found == 300 // _FIND_EVERY, f"exactly one find per {_FIND_EVERY} searches, not {found}/300"
+    streak = longest = 0
+    for c in range(300):
+        streak = streak + 1 if _story(c)[-1][2] == "found" else 0
+        longest = max(longest, streak)
+    assert longest <= 2, "never a long run of finds"
     print("ok")

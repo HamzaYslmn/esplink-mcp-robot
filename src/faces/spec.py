@@ -48,12 +48,11 @@ class Mood:
 
 @dataclass(frozen=True)
 class Gesture:
-    """A one-shot move: a centred `blink`, OR an enveloped `motion` (+ an optional prop `overlay`)."""
+    """A one-shot move: a centred `blink`, OR an enveloped `motion`."""
     name: str
     dur: float                           # seconds the move lasts
     motion: Optional[Callable] = None    # fn(p, env) -> (dx, dy, conv, sw, sh[, bias])
     blink: Optional[tuple] = None        # (eyes set, closes) -- lid-only, no motion fn
-    overlay: Optional[Callable] = None   # prop drawn while it plays (d, W, H, p, ox, oy), p = 0..1
 
 
 @dataclass(frozen=True)

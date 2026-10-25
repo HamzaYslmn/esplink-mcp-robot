@@ -1,22 +1,21 @@
-"""Order in the court (Higuruma's gavel) -- a one-shot with a different scene each trigger: a lone
-rap, a double tap, an escalating volley, a slow trembling verdict, or a frenzy of blows. The
-gavel slides in from the right and the eyes slide left to face it -- leaning in on the wind-up,
-flinching on the hit. Wears whatever mood is held, e.g. face('angry', gesture='judge').
+"""Order in the court (Higuruma's gavel) -- judging, as a looping status. The bench slides in from
+the right and the eyes slide left to face it, then rounds play back to back, each a fresh scene: a
+lone rap, a double tap, an escalating volley, a slow trembling verdict, or a frenzy of blows --
+the eyes leaning in on the wind-up and flinching on the hit.
 
-Self-check: `cd src && uv run python -m faces.reactions.judge`."""
+Self-check: `cd src && uv run python -m faces.actions.judge`."""
 import math
 
 from ..primitives import frame, rand, smoothstep
-from ..spec import Now, Reaction
+from ..spec import Action
 
-_DUR = 3.8                     # s, every scene fits inside this
+_DUR = 3.8                     # s per round; every scene fits inside one
 _SWING, _REBOUND = 0.13, 0.1   # s: slam down / bounce off the block
 _STRIKE = 180.0                # handle angle (deg, y-up) flat on the block
 _GX, _GY, _L = 124, 44, 22     # grip at the right edge, handle length
 _BX, _BY = 102, 52             # strike point on the block top
-_SLIDE = 0.4                   # s the bench takes to slide in / out
+_SLIDE = 0.4                   # s the bench takes to slide in
 _SHIFT = -12.0                 # eyes' x while the bench is on screen
-_state = {"ox": 0.0}           # the gaze the overlay last saw -> lets the motion land the eyes at _SHIFT
 
 
 def _plan(seed):
@@ -61,27 +60,28 @@ def _angle(t, seed):
     return rest
 
 
+def _round(now):
+    """(seconds into this round, this round's scene seed, 0..1 how far the bench has slid in)."""
+    T, seed = getattr(now, "t", now), getattr(now, "seed", 0)
+    k, t = divmod(T, _DUR)
+    return t, int(rand(seed, k) * 1e6), smoothstep(T / _SLIDE)
+
+
 def _moods(t, seed):
-    """(presence, impact jolt, wind-up lean) -- everything the eyes and props key off."""
+    """(impact jolt, wind-up lean) -- what the eyes and props key off."""
     s, last, n, nxt = _beat(t, seed)
-    pres = min(smoothstep(t / _SLIDE), smoothstep((_DUR - t) / _SLIDE))
     span = 0.15 + 0.25 * last[4] if last else 1.0
     k = (1 - s / span) * last[4] if last and s < span else 0.0
     lean = 0.0
     if nxt and _SWING < n < _SWING + nxt[2] + nxt[3]:       # building up through raise + hold
         lean = nxt[4] * smoothstep(1 - (n - _SWING) / (nxt[2] + nxt[3]))
-    return pres, k, lean
+    return k, lean
 
 
-def _eyes(t, seed):
-    """(dx, dy, height mult): slide over to face the bench, lean up on the wind-up, jolt + flinch on the hit."""
-    pres, k, lean = _moods(t, seed)
-    return (_SHIFT - _state["ox"]) * pres, 3 * k - 2 * lean, 1.0 + 0.04 * lean - 0.12 * k
-
-
-def _motion(p, e):   # p.seed picks this trigger's scene
-    dx, dy, sh = _eyes(p.t, p.seed)
-    return dx, dy, 0.0, 1.0, sh
+def _pose(now):   # face the bench; lean up on the wind-up, jolt + flinch on the hit
+    t, seed, pres = _round(now)
+    k, lean = _moods(t, seed)
+    return _SHIFT * pres, 3 * k - 2 * lean, 1.0 + 0.04 * lean - 0.12 * k
 
 
 def _gavel(d, ang, dx):
@@ -123,12 +123,11 @@ def _impact(d, s, hit, k, dx):
             d.rectangle([x, y, x + 1, y + 1], fill=1)
 
 
-def _overlay(d, W, H, p, ox=0.0, oy=0.0):
-    t, seed = p.t, p.seed
-    _state["ox"] = ox                                       # lets the motion land the eyes at _SHIFT whatever the gaze
+def _overlay(d, W, H, now, ox=0.0, oy=0.0):
+    t, seed, pres = _round(now)
     s, last, n, nxt = _beat(t, seed)
-    pres, k, _ = _moods(t, seed)
-    dx = (1 - pres) * 44                                    # the whole bench slides in/out from the right
+    k, _ = _moods(t, seed)
+    dx = (1 - pres) * 44                                    # the bench slides in from the right
     d.rectangle([min(86 + dx, W - 1), 61, W - 1, H - 1], fill=1)   # the bench
     d.rounded_rectangle([91 + dx, 56, 113 + dx, 59], radius=1, fill=1)   # sound block base
     d.rounded_rectangle([94 + dx, _BY, 110 + dx, 55], radius=1, fill=1)  # ...and its top plate
@@ -153,7 +152,7 @@ def _overlay(d, W, H, p, ox=0.0, oy=0.0):
         img.paste(img.convert("L").point(lambda v: 255 - v).convert("1"), (0, 0))
 
 
-REACTION = Reaction("judge", dur=_DUR, motion=_motion, overlay=_overlay)
+ACTION = Action("judge", mood="neutral", pose=_pose, overlay=_overlay)
 
 
 if __name__ == "__main__":
@@ -166,7 +165,10 @@ if __name__ == "__main__":
         for a, b in zip(hits, hits[1:]):
             assert b[0] - a[0] >= _SWING + b[2] + b[3], "wind-up must fit between blows"
         assert hits[0][0] - _SWING - hits[0][2] - hits[0][3] >= _SLIDE * 0.5, "no swing before it's on screen"
-        assert hits[-1][0] + 0.8 <= _DUR, "last blow needs time to settle before handing back"
+        assert hits[-1][0] + 0.8 <= _DUR, "last blow settles before the next round starts"
     assert len(kinds) == 5, f"every scene should come up: {kinds}"
-    assert _motion(Now(1.0, _DUR, 7), 0.0)[:2] == (0.0, 0.0), "hands the eyes back at rest"
+    from ..spec import Now
+    rounds = {_round(Now(0.0, r * _DUR + 1, 7))[1] for r in range(20)}
+    assert len(rounds) == 20, "a fresh scene every round"
+    assert _round(Now(0.0, 0.0, 7))[2] == 0 and _round(Now(0.0, 9.0, 7))[2] == 1, "the bench slides in once, then stays"
     print("judge ok")

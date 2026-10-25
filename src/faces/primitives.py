@@ -4,6 +4,9 @@ import cycle. (Effect-specific motion/draw logic stays in each effect's own file
 from __future__ import annotations
 
 import math
+from functools import cache
+
+from PIL import Image, ImageChops
 
 
 def ease(cur, tgt, dt, tau):
@@ -71,3 +74,38 @@ def flip(d, x, y):
     img, x, y = frame(d), int(round(x)), int(round(y))
     if img is not None and 0 <= x < img.width and 0 <= y < img.height:
         img.putpixel((x, y), 0 if img.getpixel((x, y)) else 1)
+
+
+_BAYER = (0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5)
+
+
+@cache
+def _screen(w, h):
+    t = Image.new("L", (w, h))
+    t.putdata([_BAYER[(y % 4) * 4 + x % 4] * 16 + 8 for y in range(h) for x in range(w)])
+    return t
+
+
+def halftone(grey):
+    """A grey 'L' image -> a '1' mask lit in proportion to its grey, by ordered dither: a stable pattern
+    that doesn't crawl from frame to frame -- the 1-bit panel's way of showing soft light or haze."""
+    return ImageChops.subtract(grey, _screen(*grey.size)).point(lambda v: 255 if v else 0).convert("1")
+
+
+@cache
+def _soft():
+    g = Image.new("L", (64, 64))
+    g.putdata([round(255 * max(0.0, 1 - math.hypot(x - 31.5, y - 31.5) / 32) ** 1.7)
+               for y in range(64) for x in range(64)])
+    return g
+
+
+def soft_spot(g, x, y, rx, ry, k, add=False):
+    """Paint a soft round blob of strength k (0..1) and radii rx, ry centred on (x, y) into grey image g,
+    keeping the brighter of it and what's there -- or, with add, summing, so overlapping puffs thicken."""
+    if k <= 0.01 or rx < 0.5 or ry < 0.5:
+        return
+    s = _soft().resize((max(1, round(2 * rx)), max(1, round(2 * ry))), Image.BILINEAR).point(lambda v: v * k)
+    box = (round(x - rx), round(y - ry))
+    under = g.crop((*box, box[0] + s.width, box[1] + s.height))
+    g.paste((ImageChops.add if add else ImageChops.lighter)(under, s), box)

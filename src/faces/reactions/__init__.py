@@ -10,7 +10,7 @@ from .._registry import load
 _ORDER = (
     # social replies to the user: affirm / deny / acknowledge
     "nod", "refuse", "acknowledge",
-    "laugh", "excited", "pop", "shiver", "roll", "squint", "cross_eyes", "judge",
+    "laugh", "excited", "pop", "shiver", "roll", "squint", "cross_eyes",
 )
 
 REACTIONS = load(__name__, _ORDER, "REACTION")   # name -> Reaction(=Gesture), curated order
