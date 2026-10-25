@@ -30,6 +30,15 @@ How a buoyant thermal becomes a mushroom (the actual gas dynamics, run every fra
     ordered-dithered to 1-bit -- a thick, textured, billowing mass on a 128x64 panel.
   * TIME-WARP: after the dwell, sim-time runs faster than wall-time (via substeps, so each advect
     stays CFL-safe). We watch the long rise + spread + dissipation as an accelerating time-lapse.
+  * LIGHT: the cloud is lit from the upper left using its own density gradient as the surface
+    normal -- the sunward rim of the cap blazes, its underside and the shadowed flank stay dim --
+    so the dithered mass reads as a 3D cauliflower, not a flat disc. Thin haze below a cut is black.
+Around the cloud, the classic features of real test footage, all keyed to blast time:
+  * the WILSON CONDENSATION RING: the shock's rarefaction briefly cools humid air below its dew
+    point -- a thin ring of cloud blooms around the stem, expands, and evaporates;
+  * the BASE SURGE: the dust skirt the shock kicks up rolls outward along the ground and settles;
+  * the PILEUS ("ice cap"): the rising head shoves a moist layer up into a smooth cap just above
+    it, which the head then punches into and swallows.
 `still=True` locks the gaze; the eyes are carved away while the cloud owns the frame.
 """
 import math
@@ -104,9 +113,14 @@ _INJECT_T = 9.0                      # heat injected per sim-second at the base
 _PRATE, _MAXP = 14000.0, 20000       # smoke parcels spawned per sim-second; live-parcel cap (dense -> solid cap)
 _PDIFF = 2.5                         # turbulent-diffusion random walk (px / sqrt(sim-s)): fills the vortex core
 _SRC_FALL = 3.4                      # sim-seconds the base feeds heat + smoke (then the cap rises free)
-_DISPERSE, _DISPERSE_TAU = 5.5, 6.0  # sim-time the cloud starts thinning, and its dispersal time-constant (sim-s)
+_DISPERSE, _DISPERSE_TAU = 6.5, 9.0  # sim-time the cloud starts thinning, and its dispersal time-constant (sim-s)
 _OPACITY_K = 0.11                    # Beer-Lambert extinction: column density -> opacity 1-e^{-k*d}
 _BLUR = 2                            # density-smoothing passes before dithering (cohere + fill voids)
+_LIGHT = (-0.55, -0.83)              # sun direction (x, y; screen y points down): upper left
+_HAZE_CUT = 0.14                     # opacity below this draws black: no lone speckles in thin haze
+_SHADOW_K = 0.003                    # sunlight extinction through the cloud above a point (self-shadow)
+_LAM_W = 0.2                         # how strongly the sunward rim brightens / the far flank dims
+_TONE = (0.1, 0.4)                   # tone curve: lit below lo -> black, above lo + width -> solid
 
 # time-warp: after the dwell, sim-time outruns wall-time so the long rise/dissipation plays as a
 # time-lapse. We advance it in CFL-safe SUBSTEPS (never one giant dt, which would smear advection).
@@ -125,7 +139,7 @@ _sim = {"start": None, "wall": None, "stime": 0.0, "pacc": 0.0,
 def _reset(now):
     np.random.seed(20240617)                            # deterministic so the showcase GIF is stable
     zero = lambda: np.zeros((_NY, _NX))                 # noqa: E731
-    _sim.update(start=_start[0], wall=now, stime=0.0, pacc=0.0, w=zero(), T=zero(),
+    _sim.update(start=_start[0], wall=now, stime=0.0, pacc=0.0, w=zero(), T=zero(), geom=None,
                 psi=zero(), u=zero(), v=zero(), p=np.zeros((0, 3)))
 
 
@@ -248,22 +262,83 @@ def _advect_particles(dt, stime, src, u, v):
     _sim["p"] = p
 
 
-def _draw_cloud(d):
-    """The visible cloud: parcels -> a column-density buffer -> Beer-Lambert opacity -> ordered dither.
-    Optical depth + smoothing is what makes a thick haze of parcels read as a solid, billowing mass."""
+def _features(tau):
+    """Column density of the condensation ring, the base surge and the pileus cap (same units as the
+    smoke buffer), so they share its opacity, light and dither."""
+    f = np.zeros((_NY, _NX))
+    if 0.55 < tau < 1.9:                                      # Wilson ring: blooms, expands, evaporates
+        u = (tau - 0.55) / 1.35
+        rx = 9 + 22 * u ** 0.6
+        q = np.sqrt(((_XS - _BX) / rx) ** 2 + ((_YS - (_GROUND - 16)) / (rx * 0.16)) ** 2)
+        f += 24 * math.sin(math.pi * u) * np.exp(-((q - 1) / 0.09) ** 2)
+    if 0.35 < tau < 6.5:                                      # base surge: a dust skirt rolling out, settling
+        rs = 10 + 34 * min(1.0, (tau - 0.35) / 3.0) ** 0.5
+        lump = np.clip(1 - np.abs(_XS - _BX) / rs, 0, 1) ** 0.5
+        rough = 0.6 + 0.25 * np.sin(_XS * 0.53 + 1.7 * tau) + 0.15 * np.sin(_XS * 1.31 - 2.3 * tau)
+        h = (2.0 + 3.0 * min(1.0, (tau - 0.35) / 1.5)) * lump * rough
+        settle = math.exp(-max(0.0, tau - 2.5) / 1.3)
+        f += 26 * settle * (_YS > _GROUND - h)
     p = _sim["p"]
-    if not len(p):
+    if tau > 1.2 and len(p) > 150:                            # the stem + a filled cap: the column of dust
+        dense = p[p[:, 2] > 0.3]                              # the updraft keeps pulling up under the head
+        if len(dense) > 150:                                  # track the head while it's dense; remember it after
+            cx = float(np.median(dense[:, 0]))
+            _sim["geom"] = (cx, float(np.percentile(dense[:, 1], 3)), float(np.percentile(dense[:, 1], 60)),
+                            float(np.percentile(np.abs(dense[:, 0] - cx), 90)))
+        if _sim.get("geom"):
+            cx, top, bot, half = _sim["geom"]
+            keep = math.exp(-max(0.0, tau - 6.8) / 0.7)       # thins with the cloud as it disperses
+            span = max(1.0, _GROUND - bot)
+            frac = np.clip((_YS - bot) / span, 0.0, 1.0)
+            w = 2.2 + 1.2 * np.sin(_YS * 0.45 + tau) * 0.4 + 6.0 * frac ** 2.5   # narrow, flaring at the ground
+            stem = np.exp(-((_XS - cx) / w) ** 2) * (_YS > bot) * (_YS <= _GROUND)
+            f += 26 * keep * stem
+            h = max(3.0, bot - top)                           # fill the seam between the two vortex lobes
+            q = ((_XS - cx) / max(3.0, 0.75 * half)) ** 2 + ((_YS - (top + 0.45 * h)) / (0.45 * h)) ** 2
+            f += 18 * keep * np.exp(-q)                       # soft, so it blends into the lobes
+    if 2.4 < tau < 5.6 and len(p) > 500:                      # pileus: a smooth cap just above the head
+        dense = p[p[:, 2] > 0.35]
+        if len(dense) > 200:
+            top = float(np.percentile(dense[:, 1], 3))
+            cx = float(np.median(dense[:, 0]))
+            half = float(np.percentile(np.abs(dense[:, 0] - cx), 90)) * 0.9
+            fade = math.sin(math.pi * (tau - 2.4) / 3.2)
+            q = np.sqrt(((_XS - cx) / max(half, 4)) ** 2 + ((_YS - (top - 1.5)) / 3.0) ** 2)
+            f += 40 * fade * np.exp(-((q - 1) / 0.12) ** 2) * (_YS < top)
+    return f
+
+
+def _draw_cloud(d, tau=0.0):
+    """The visible cloud: parcels -> a column-density buffer -> Beer-Lambert opacity -> lit by the
+    sun through the density gradient -> ordered dither. Optical depth + smoothing makes a thick haze
+    of parcels read as a solid, billowing mass; the light makes it read round."""
+    p = _sim["p"]
+    p = p[(p[:, 0] >= 0) & (p[:, 0] < _NX) & (p[:, 1] >= 0) & (p[:, 1] < _NY)] if len(p) else p
+    buf = _features(tau)
+    if len(p):
+        xi, yi = p[:, 0].astype(np.intp), p[:, 1].astype(np.intp)
+        buf += np.bincount(yi * _NX + xi, weights=p[:, 2], minlength=_NY * _NX).reshape(_NY, _NX)
+    if not buf.any():
         return
-    xi = np.clip(p[:, 0].astype(np.intp), 0, _NX - 1)
-    yi = np.clip(p[:, 1].astype(np.intp), 0, _NY - 1)
-    buf = np.bincount(yi * _NX + xi, weights=p[:, 2],
-                      minlength=_NY * _NX).astype(np.float64).reshape(_NY, _NX)
-    for _ in range(_BLUR):                                    # unit-gain separable smooth -> haze coheres, voids fill
-        buf += 0.5 * (np.roll(buf, 1, 1) + np.roll(buf, -1, 1))
-        buf += 0.5 * (np.roll(buf, 1, 0) + np.roll(buf, -1, 0))
-        buf *= 0.25
-    opacity = 1.0 - np.exp(-_OPACITY_K * buf)                 # Beer-Lambert: thicker column -> more opaque
-    ys, xs = np.nonzero(opacity > _DITHER)                    # ordered dither to 1-bit
+    for _ in range(_BLUR):                                    # unit-gain separable smooth, no wrap-around
+        pad = np.pad(buf, 1)
+        buf = 0.25 * (2 * buf + pad[1:-1, :-2] + pad[1:-1, 2:])
+        pad = np.pad(buf, 1)
+        buf = 0.25 * (2 * buf + pad[:-2, 1:-1] + pad[2:, 1:-1])
+    opacity = 1.0 - np.exp(-_OPACITY_K * 1.6 * buf)           # Beer-Lambert: thicker column -> more opaque
+    gx = np.zeros_like(buf); gy = np.zeros_like(buf)
+    gx[:, 1:-1] = buf[:, 2:] - buf[:, :-2]
+    gy[1:-1, :] = buf[2:, :] - buf[:-2, :]
+    g = np.hypot(gx, gy) + 1e-6
+    lam = -(gx * _LIGHT[0] + gy * _LIGHT[1]) / g              # outward normal . sun
+    edge = np.clip(g / 6.0, 0.0, 1.0)                         # flat interiors take the mean light
+    above = np.cumsum(buf, axis=0) - buf                      # cloud between this point and the sky
+    sun = 0.5 + 0.5 * np.exp(-_SHADOW_K * above)              # self-shadow: the cap's underside and stem dim
+    lit = opacity * (0.85 * sun + _LAM_W * lam * edge)
+    k = np.clip((lit - _TONE[0]) / _TONE[1], 0.0, 1.0)
+    lit = k * k * (3 - 2 * k)                                 # steep tone curve: sunlit cloud solid, dither only in
+    lit[opacity < _HAZE_CUT] = 0.0                            # the shadows, the stem and the soft edges
+    ys, xs = np.nonzero(lit > _DITHER)                        # ordered dither to 1-bit
     if len(xs):
         d.point(list(zip(xs.tolist(), ys.tolist())), fill=1)
 
@@ -320,7 +395,7 @@ def _blast(d, tau, now, ox, oy):
     _shock(d, tau, now)
     _debris(d, tau)
     _fireball(d, tau)
-    _draw_cloud(d)
+    _draw_cloud(d, tau)
 
 
 # ----------------------------------------------------------------- arm: trefoil in the eyes

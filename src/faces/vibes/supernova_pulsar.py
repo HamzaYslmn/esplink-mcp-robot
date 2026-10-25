@@ -1,4 +1,4 @@
-"""Supernova -- a massive star's core-collapse death, the real sequence end to end on Pip's eyes.
+"""Supernova + pulsar -- a massive star's core-collapse death, the real sequence end to end on Pip's eyes.
 
 The textbook sequence has 54 steps (main-sequence ignition -> remnant). A star does NOT just explode:
 it lives a long fusion-supported life and SWELLS (core contracts between fuel stages while shell burning
@@ -20,7 +20,7 @@ Physics model (1D spherical Lagrangian hydro -- the von Neumann-Richtmyer scheme
 
 On-screen phases, mapped to the real steps (the hydro genuinely simulates 21-41; the long life and the
 late light curve are compressed/rendered, since a toy EoS has neither nuclear networks nor a light curve):
-  1. _intro  -- the two eyes merge and round into the newborn star.                           [main sequence, 1]
+  1. intro   -- Pip's eyes round into balls and fuse into the newborn star.          [main sequence, 1]
   2. _grow   -- the star swells through its fusion-supported life to a red/supergiant.   [core burning -> Fe, 1-15]
   3. collapse + bounce -- iron core goes unstable, implodes subsonically/supersonically, reaches nuclear
      density, traps neutrinos, forms a proto-neutron star and REBOUNDS, launching a shock.        [16-28]
@@ -29,16 +29,28 @@ late light curve are compressed/rendered, since a toy EoS has neither nuclear ne
   5. explosion + shell -- the shock accelerates out through the mantle and the ejecta sweep the wind into a
      hollow, limb-brightened expanding shell.                                                     [41-47]
   6. breakout flash -- the shock reaches the surface: the first electromagnetic flash.            [45-46, 48]
+  2b. _rsg   -- the supergiant's last years: it pulsates (semi-regular, like Betelgeuse), giant
+     convection cells boil across its face, and it sheds puffs of gas -- the wind the shock later
+     hits, and an equatorial ring like SN 1987A's.                                               [12-15]
+  6b. as the shock races out the camera pulls back, so the expanding shell stays in frame. The
+     flash first ionises the old ring (a faint glow); when the ejecta reach it, it lights up bead
+     by bead, nearest side first -- the "string of pearls". Light echoes: the flash reflected off
+     distant dust sheets sweeps out as faint arcs.
   7. remnant -- the ejecta thin and fade, leaving a compact neutron star that lights as a pulsar: the
      magnetic axis is tilted off the spin axis and cones round it as the star rotates about its own axis
      (a lighthouse, not a flat propeller). Magnetospheric, so rendered -- a bare ideal-gas EoS holds no
      neutron star, and the beam never pushes the ejecta (it is light on the gas, not a force in it). [52-54]
+     The hydro then hands over to the remnant's analytic Sedov-Taylor blast wave (R ~ t^2/5): a
+     limb-brightened thin shell (the exact chord through a spherical shell) with a fainter reverse
+     shock inside, rippled by the same Rayleigh-Taylor fingers. Inside it a Crab-like pulsar wind
+     nebula -- a synchrotron torus with wisps rippling outward. The pulsar spins down slowly and
+     now and then glitches (a sudden spin-up, then relaxation), flaring as it does.
 """
 import math
 
 import numpy as np
 
-from ..primitives import smoothstep
+from ..primitives import rounded_rect, smoothstep
 from ..spec import Vibe
 
 # ---- panel / render geometry ----
@@ -65,11 +77,10 @@ _4PI = 4.0 * math.pi
 _4PI3 = _4PI / 3.0
 
 # ---- pacing: wall-time -> sim-time, with bullet-time through the bounce, then a held remnant ----
-_T_INTRO = 0.9          # eyes merge and round into the newborn-star sphere
+_T_INTRO = 1.4          # Pip's eyes round into two balls, drift together and fuse into the newborn star
 _T_EXPAND = 1.5         # the envelope swells into a supergiant as core fusion runs through its fuels
 _GROW_SEED = 12.0       # newborn-star sphere radius (px) the eyes merge into, before it expands
 _GROW_GAIN = 1.25       # limb-darkened sphere brightness -- shared by intro/grow so the hand-off is seamless
-_HANDOFF = 0.62         # fraction of the grow phase after which it crossfades into the live hydro field
 _SIM_RATE = 1.05        # base sim-seconds per wall-second (fast through the slow fuel-burning life)
 _SIM_TAU = 0.20         # smooth wall-time jitter before it reaches the hydro clock
 _BULLET = 0.22          # slow to this fraction near the bounce so we savour the rebound
@@ -98,6 +109,18 @@ _JET_LEN, _JET_HALF = 72.0, 0.12     # beam reach (px) and cone half-angle (rad)
 _JET_GAIN = 1.7                      # beam brightness -> a solid clean ray, not a dithered fuzzy band
 _JET_RAMP, _JET_DELAY = 2.6, 1.8     # wall-s: jets bloom in after bounce, once the shell has opened up
 _NS_R = 2.3                          # neutron-star core radius (px)
+
+# ---- supergiant life, camera, ring, echoes, remnant, pulsar timing ----
+_T_RSG = 3.2                         # wall-s of supergiant life before the core gives out
+_PULSE_P, _PULSE_A = 1.15, 0.035     # semi-regular pulsation: period (s) and radius amplitude
+_ZOOM_PX, _ZOOM_TAU = 25.0, 0.35     # keep the bright shell ~25 px out; camera ease time (s)
+_RING_SIM, _RING_INC = 1.7, 0.42     # old equatorial ring radius (sim units), apparent ry/rx (inclined)
+_PEARLS = 22                         # hot spots around the ring
+_ECHO_DELAY = 2.6                    # wall-s after breakout before the light echoes sweep out
+_SEDOV_TAU = 20.0                    # remnant expansion time scale (wall-s): R ~ (1 + t/tau)^0.4
+_GLITCH = (9.0, 14.0)                # wall-s between pulsar glitches
+_REMNANT_FADE, _REMNANT_LIFE = 6.5, 16.0   # wall-s: the shell's e-fold fade; when it is surely gone
+_T_HANDOFF = 6.0                     # sim-s: the shell is still bright -> hand over to the analytic remnant
 
 _BAYER = (np.array([[0, 8, 2, 10], [12, 4, 14, 6],
                     [3, 11, 1, 9], [15, 7, 13, 5]]) + 0.5) / 16.0
@@ -152,10 +175,14 @@ def _reset(now):
     bk = np.random.rand(_RT_MODES); bk /= bk.sum()
     drift = (np.random.rand(_RT_MODES) * 2.0 - 1.0) * np.linspace(0.025, 0.16, _RT_MODES)
     fingers = sum(b * np.sin(n * _ANG + p) for n, p, b in zip(ns, ph, bk))
+    cells = [(np.random.rand() * 2 * math.pi, 0.25 + 0.5 * np.random.rand(), 0.2 + 0.1 * np.random.rand(),
+              np.random.rand() * 6.3) for _ in range(4)]          # giant convection cells (angle, r, size, phase)
     _S.update(born=now, wall=now, t_sim=0.0, r=r, v=v, eps=eps, dm=dm, m=m,
               rho_c=rho[0], rho_c0=rho[0], t_bounce=0.0, t_bounce_wall=None, flash=0.0, flash_age=0.0,
               bounced=False, broke=False, rt=0.0, fingers=fingers, rt_modes=ns, rt_phase=ph,
-              rt_weight=bk, rt_drift=drift, sim_rate=_SIM_RATE, luma=None, draw_wall=now)
+              rt_weight=bk, rt_drift=drift, sim_rate=_SIM_RATE, luma=None, draw_wall=now,
+              cells=cells, scale=_SCALE, r_peak=0.0, t_break_wall=None, ring_hit=None, t_freeze_wall=None,
+              r_freeze=_ZOOM_PX, spin=_SPIN, spin_base=_SPIN, spin_phase=0.0, glitch_next=None, glitch=0.0)
 
 
 # ---------------------------------------------------------------- the integrator
@@ -241,7 +268,7 @@ def _advance(now):
     s["wall"] = now
     if dt_wall <= 0.0 or dt_wall > 0.25:
         dt_wall = 1.0 / 30.0
-    if s["t_sim"] < _T_FREEZE:                                   # still evolving -> integrate the hydro
+    if s["t_sim"] < _T_FREEZE and s.get("t_freeze_wall") is None:   # still evolving -> integrate the hydro
         near = smoothstep((s["rho_c"] / _RHO_NUC - 0.3) / 0.7)   # ramp into bullet-time as the core nears nuclear
         target_rate = _SIM_RATE * (1.0 - (1.0 - _BULLET) * near)
         a = 1.0 - math.exp(-dt_wall / _SIM_TAU)
@@ -262,6 +289,27 @@ def _advance(now):
             s["flash"] = max(0.0, s["flash"] - _FLASH_DECAY * dt_wall)
     if s["bounced"] and s["t_bounce_wall"] is None:              # pulsar's birth -> anchor the beam fade-in
         s["t_bounce_wall"] = now
+        s["glitch_next"] = now + _GLITCH[0]
+    if s["broke"] and s["t_break_wall"] is None:
+        s["t_break_wall"] = now
+    if s["bounced"] and s["t_freeze_wall"] is None:             # camera pulls back to keep the shell in frame
+        rc, em = _emission()
+        s["r_peak"] = float(rc[int(np.argmax(em))])
+        target = min(_SCALE, _ZOOM_PX / max(s["r_peak"], 1e-3))
+        s["scale"] = min(s["scale"], s["scale"] + (target - s["scale"]) * (1 - math.exp(-dt_wall / _ZOOM_TAU)))
+        if s["ring_hit"] is None and s["r_peak"] >= _RING_SIM:  # the ejecta reach the old ring
+            s["ring_hit"] = now
+        if s["t_sim"] >= _T_HANDOFF:                            # hand over to the analytic remnant
+            s["t_freeze_wall"], s["r_freeze"] = now, s["r_peak"] * s["scale"]
+    if s["bounced"]:                                             # pulsar: slow spin-down, occasional glitches
+        s["spin_base"] *= math.exp(-dt_wall / 600.0)
+        s["spin"] += (s["spin_base"] - s["spin"]) * (1 - math.exp(-dt_wall / 3.0))
+        if now >= s["glitch_next"]:
+            s["spin"] *= 1.35
+            s["glitch"] = 1.0
+            s["glitch_next"] = now + _GLITCH[0] + (_GLITCH[1] - _GLITCH[0]) * (0.5 + 0.5 * math.sin(now * 7.1))
+        s["glitch"] = max(0.0, s["glitch"] - dt_wall / 1.2)
+        s["spin_phase"] += s["spin"] * dt_wall
 
 
 # ---------------------------------------------------------------- drawing (one field, every frame)
@@ -319,7 +367,7 @@ def _jets(now):
     amp = smoothstep((now - s["t_bounce_wall"] - _JET_DELAY) / _JET_RAMP)
     if amp <= 0.0:
         return 0.0
-    phi = now * _SPIN
+    phi = s["spin_phase"]
     beam = _COS_OBL * _AXIS + _SIN_OBL * (math.cos(phi) * _AXU + math.sin(phi) * _AXW)   # cones around the axis
     jb = np.zeros((_H, _W))
     pulse = 0.0
@@ -340,7 +388,7 @@ def _jets(now):
 def _draw_ns(d, now):
     """The neutron star itself: a tiny brilliant core at the heart of the nebula."""
     amp = smoothstep((now - _S["t_bounce_wall"]) / 0.8)
-    rns = _NS_R * amp
+    rns = _NS_R * amp * (1 + 0.6 * _S["glitch"])
     if rns > 0.4:
         d.ellipse([_CX - rns, _CY - rns, _CX + rns, _CY + rns], fill=1)
 
@@ -379,12 +427,97 @@ def _field_b(now):
     LOS-projected (limb-brightened shell), with the pulsar beams blended in once it has bounced."""
     s = _S
     rt_age = max(0.0, s["t_sim"] - s["t_bounce"]) if s["bounced"] else 0.0
-    bimp = np.clip((_RAD - s["rt"] * _rt_fingers(rt_age)) / _SCALE, 0.0, None)   # RT fingers ripple the shell
-    b = np.clip((_column(bimp) / _EM_REF) ** _EM_P, 0.0, 1.0)
-    b = np.clip((b - _B_FLOOR) / (1.0 - _B_FLOOR), 0.0, 1.0)              # faint diffuse gas -> black; space stays black
+    if s["t_freeze_wall"] is not None and now - s["t_freeze_wall"] > 1.2:
+        b = _remnant_b(now)                              # the hydro has handed over to the remnant
+    else:
+        bimp = np.clip((_RAD - s["rt"] * _rt_fingers(rt_age)) / s["scale"], 0.0, None)   # RT fingers ripple the shell
+        b = np.clip((_column(bimp) / _EM_REF) ** _EM_P, 0.0, 1.0)
+        b = np.clip((b - _B_FLOOR) / (1.0 - _B_FLOOR), 0.0, 1.0)          # faint diffuse gas -> black; space stays black
+        if s["t_freeze_wall"] is not None:               # crossfade the frozen hydro into the remnant
+            x = smoothstep((now - s["t_freeze_wall"]) / 1.2)
+            b = (1 - x) * b + x * _remnant_b(now)
+    if s["bounced"]:
+        b = np.maximum(b, _extras(now))                  # ring + pearls, light echoes, pulsar wind nebula
     if s["bounced"]:
         b = np.maximum(b, _jets(now))                    # beams emerge from the explosion, no hand-off pop
     return _smooth_luma(b, now)
+
+
+def _shell(R, w, bimp):
+    """Line-of-sight chord through a thin spherical shell (radius R, thickness w) at impact
+    parameter bimp, normalised to its limb peak -- why remnants look like rings, not discs."""
+    outer = np.sqrt(np.clip(R * R - bimp * bimp, 0.0, None))
+    inner = np.sqrt(np.clip((R - w) ** 2 - bimp * bimp, 0.0, None))
+    return (outer - inner) / max(math.sqrt(R * R - (R - w) ** 2), 1e-6)
+
+
+def _remnant_b(now):
+    """Sedov-Taylor blast wave, R ~ (1 + t/tau)^0.4, drawn the way Cas A and Tycho look: a thin,
+    knotty forward shock (the limb-brightened chord through a spherical shell), broken arcs of the
+    reverse shock inside, and a near-dark interior. The outline is gently lopsided (low modes); the
+    knots and filaments are fine angular structure that slowly shears as the shell expands. It then
+    dissipates into the interstellar medium: as it fades only its brightest knots stay above the
+    threshold, so the ring breaks into clumps and is gone, leaving the pulsar and its nebula."""
+    s = _S
+    age = now - s["t_freeze_wall"]
+    if age > _REMNANT_LIFE:
+        return np.zeros((_H, _W))                        # dissipated: nothing left to render
+    grow = 1 + age / _SEDOV_TAU
+    R = s["r_freeze"] * grow ** 0.4
+    fade = grow ** -0.5 * math.exp(-age / _REMNANT_FADE)
+    p = s["rt_phase"]
+    lop = 1 + 0.06 * np.sin(2 * _ANG + p[0]) + 0.035 * np.sin(3 * _ANG + p[1])
+    fil = (np.sin(11 * _ANG + p[2] + 0.05 * age) + 0.7 * np.sin(17 * _ANG + p[3] - 0.04 * age)
+           + 0.5 * np.sin(23 * _ANG + p[4] + 0.03 * age)) / 2.2
+    bimp = np.clip(_RAD / lop - 0.9 * fil, 0.0, None)
+    knots = 0.72 + 0.28 * np.sin(13 * _ANG + p[5] + 0.2 * age) * np.sin(7 * _ANG + p[6] - 0.1 * age)
+    fwd = _shell(R, 1.8, bimp) * knots
+    arcs = np.clip(1.4 * np.sin(4 * _ANG + p[7] + 0.15 * age), 0.0, 1.0)   # the reverse shock is patchy
+    rev = _shell(0.6 * R, 1.4, bimp) * arcs
+    b = fade * np.maximum(2.2 * fwd, 0.9 * rev)
+    return np.clip((b - 0.36) / 0.64, 0.0, 1.0)          # faint interior chords -> dark, the rim stays crisp
+
+
+def _extras(now):
+    """Everything around the explosion that the 1D hydro can't hold, as one brightness field."""
+    s = _S
+    f = np.zeros((_H, _W))
+    rx = _RING_SIM * s["scale"]                          # the old equatorial ring, in the current zoom
+    ry = rx * _RING_INC
+    if s["t_break_wall"] is not None:                    # the flash ionises it: a faint glow, fading
+        q = np.sqrt(((_XS - _CX) / rx) ** 2 + ((_YS - _CY) / ry) ** 2)
+        f = np.maximum(f, 0.3 * math.exp(-(now - s["t_break_wall"]) / 2.5) * np.exp(-((q - 1) * rx / 0.9) ** 2))
+    if s["ring_hit"] is not None:                        # the ejecta hit it: hot spots light up, nearest first
+        for i in range(_PEARLS):
+            a = 2 * math.pi * i / _PEARLS + 0.13
+            age = now - s["ring_hit"] - 1.6 * (0.5 - 0.5 * math.sin(a))
+            if age <= 0:
+                continue
+            br = min(1.0, age / 0.25) * math.exp(-age / 14.0)
+            x, y = int(round(_CX + rx * math.cos(a))), int(round(_CY + ry * math.sin(a)))
+            for dx, dy, k in ((0, 0, 1.0), (1, 0, 0.55), (-1, 0, 0.55), (0, 1, 0.45), (0, -1, 0.45)):
+                if 0 <= x + dx < _W and 0 <= y + dy < _H:
+                    f[y + dy, x + dx] = max(f[y + dy, x + dx], br * k)
+    if s["t_break_wall"] is not None:                    # light echoes off two distant dust sheets
+        e = now - s["t_break_wall"] - _ECHO_DELAY
+        if 0 < e < 4.0:
+            band = np.exp(-((_RAD - (16 + 24 * e)) / 1.3) ** 2) * 0.6 * math.exp(-e / 1.5)
+            for a0, a1 in ((-2.5, -1.5), (0.35, 1.25)):
+                m = np.clip((_ANG - a0) / 0.2, 0, 1) * np.clip((a1 - _ANG) / 0.2, 0, 1)   # soft-edged arc
+                f = np.maximum(f, band * m)
+    if s["t_bounce_wall"] is not None:                   # Crab-like pulsar wind nebula: torus + wisps
+        t = now - s["t_bounce_wall"]
+        amp = smoothstep((t - 4.0) / 3.0)
+        if amp > 0:
+            k = 1 + 0.015 * t
+            q = np.sqrt(((_XS - _CX) / (6.0 * k)) ** 2 + ((_YS - _CY) / (2.4 * k)) ** 2)
+            neb = 0.95 * np.exp(-((q - 1) / 0.13) ** 2)                      # the inner torus, crisp
+            neb = np.maximum(neb, 0.55 * np.exp(-(q / 0.5) ** 2))            # synchrotron glow at the heart
+            for j in range(2):                                               # wisps rippling outward
+                ph = (now * 0.5 + 0.5 * j) % 1.0
+                neb = np.maximum(neb, 0.5 * (1 - ph) * np.exp(-((q - 1.15 - 1.1 * ph) / 0.09) ** 2))
+            f = np.maximum(f, amp * neb)
+    return f
 
 
 def _draw_field(d, now):
@@ -397,20 +530,22 @@ def _draw_field(d, now):
         _draw_ns(d, now)                                 # the persistent neutron star core
 
 
-def _intro_b(u):
-    """Phase 1 [step 1]: the two eyes drift together and melt into one limb-darkened sphere -- the
-    star igniting on the main sequence. The melt lands exactly on the sphere the grow phase starts
-    from, so intro -> grow never jumps."""
-    m = smoothstep(u)                                    # eye centres drift to the middle
-    fuse = smoothstep((u - 0.28) / 0.72)                 # ... and the two shapes dissolve into one sphere
-    rx = 18.0 + (_GROW_SEED - 18.0) * m                  # wide ellipses round toward the seed radius
-    ry = 10.5 + (_GROW_SEED - 10.5) * m
-    eyes = np.zeros((_H, _W))
-    for cx0 in (41.0, 87.0):
-        cx = cx0 + (_CX - cx0) * m
-        q = ((_XS - cx) / max(rx, 1e-6)) ** 2 + ((_YS - _CY) / max(ry, 1e-6)) ** 2
-        eyes = np.maximum(eyes, np.clip(_GROW_GAIN * (1.0 - q ** 3), 0.0, 1.0))   # solid eyes, like the star
-    return (1.0 - fuse) * eyes + fuse * _sphere_b(_GROW_SEED)
+def _draw_intro(d, u):
+    """Phase 1 [step 1]: Pip's own eyes (36 px rounded squares) round off into two balls, drift
+    together and fuse. Area is kept -- two balls of r/sqrt(2) make one star of the seed radius r the
+    grow phase starts from -- and a waist bridges them as they touch, like two drops coalescing."""
+    m = smoothstep(u / 0.45)                             # the eyes round off into balls
+    f = smoothstep((u - 0.35) / 0.65)                    # ...then drift together and fuse
+    r1 = _GROW_SEED / math.sqrt(2)
+    ball = 36 + (2 * r1 - 36) * m                        # eye size -> ball diameter
+    w = ball + (2 * _GROW_SEED - ball) * f               # each ball swells into the merged star
+    rad = 12 + (w / 2 - 12) * m
+    dx = 23.0 * (1 - f)
+    for sgn in (1, -1):
+        rounded_rect(d, _CX + sgn * dx - w / 2, _CY - w / 2, w, w, rad, 1)
+    if f > 0 and dx < w * 0.6:                           # the waist where the two surfaces join
+        h = w * (0.55 + 0.45 * f)
+        d.ellipse([_CX - dx, _CY - h / 2, _CX + dx, _CY + h / 2], fill=1)
 
 
 def _grow_b(u):
@@ -420,6 +555,24 @@ def _grow_b(u):
     return _sphere_b(R)
 
 
+def _rsg_b(a):
+    """Phase 2b: the supergiant's last years. It pulsates, giant convection cells boil across its
+    face (dark, cooler patches), and it sheds puffs of gas that drift out and fade."""
+    R = _R_STAR * _SCALE * (1 + _PULSE_A * math.sin(2 * math.pi * a / _PULSE_P) * (0.7 + 0.3 * math.sin(a * 1.7)))
+    b = _sphere_b(R)
+    for ang, rf, size, ph in _S["cells"]:
+        cx = _CX + R * rf * math.cos(ang + 0.12 * a)
+        cy = _CY + R * rf * 0.9 * math.sin(ang + 0.12 * a)
+        depth = 0.45 * (0.6 + 0.4 * math.sin(a * 1.3 + ph))
+        b = b * (1 - depth * np.exp(-((_XS - cx) ** 2 + (_YS - cy) ** 2) / (2 * (size * R) ** 2)))
+    for t0 in (0.5, 1.8):                                # mass-loss puffs
+        p = a - t0
+        if 0 < p < 2.2:
+            lump = 0.65 + 0.35 * np.sin(5 * _ANG + t0 * 3)
+            b = np.maximum(b, 0.42 * (1 - p / 2.2) * lump * np.exp(-((_RAD - (R + 2 + 14 * p)) / 1.2) ** 2))
+    return b
+
+
 def _overlay(d, W, H, now, ox=0.0, oy=0.0):
     d.rectangle([0, 0, W - 1, H - 1], fill=0)            # the star / remnant owns the whole frame
     s = _S
@@ -427,14 +580,18 @@ def _overlay(d, W, H, now, ox=0.0, oy=0.0):
         _reset(now)
     age = now - s["born"]
     if age < _T_INTRO:                                   # eyes -> newborn star
-        _blit(d, _intro_b(age / _T_INTRO))
+        _draw_intro(d, age / _T_INTRO)
         s["wall"] = now                                  # pin the sim clock until the collapse begins
         return
     if age < _T_INTRO + _T_EXPAND:                       # fusion fails -> the envelope swells to a supergiant
-        u = (age - _T_INTRO) / _T_EXPAND
-        b = _grow_b(u)
-        if u > _HANDOFF:                                 # crossfade the analytic sphere into the live emission
-            x = smoothstep((u - _HANDOFF) / (1.0 - _HANDOFF))   # field is the static t=0 star -> matches the first sim frame
+        _blit(d, _grow_b((age - _T_INTRO) / _T_EXPAND))
+        s["wall"] = now
+        return
+    if age < _T_INTRO + _T_EXPAND + _T_RSG:               # the supergiant's last years
+        a = age - _T_INTRO - _T_EXPAND
+        b = _rsg_b(a)
+        x = smoothstep((a - (_T_RSG - 0.7)) / 0.7)        # crossfade into the live emission (the static t=0 star)
+        if x > 0:
             b = (1.0 - x) * b + x * _field_b(now)
         _blit(d, b)
         s["wall"] = now
@@ -446,4 +603,4 @@ def _overlay(d, W, H, now, ox=0.0, oy=0.0):
     _draw_field(d, now)
 
 
-VIBE = Vibe("supernova", mood="awe", overlay=_overlay, still=True)
+VIBE = Vibe("supernova_pulsar", mood="awe", overlay=_overlay, still=True)

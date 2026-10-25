@@ -8,7 +8,7 @@ from .._registry import load
 # -- curated order; screen/glitch fx, then scanners/boot, then machine work, games, ambient --
 _ORDER = (
     "matrix", "warp", "recording", "ascii_morph", "pixel_decay", "emp_pulse",   # screen / glitch fx
-    "cylon", "blackhole", "supernova", "solarflare",   # cosmic
+    "cylon", "blackhole", "supernova_pulsar", "solarflare",   # cosmic
     "boot_draw", "barcode_scan", "target_lock", "target_release", "thermal_scan",  # scanners / boot
     "defrag_blocks", "energy_blast", "nuke", "game_of_life", "tesseract", "quantum",   # machine work
     "jackpot", "dice_roll", "snake",                                   # games
