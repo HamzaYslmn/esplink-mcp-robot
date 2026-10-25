@@ -16,21 +16,13 @@ from functools import cache
 
 log = logging.getLogger("robot.llm")
 
-# env defaults; any response() call can override them.
-MODEL = os.getenv("ROBOT_MODEL", "qwen3.5:4b")
-OPTS = {"num_ctx": int(os.getenv("ROBOT_NUM_CTX", "4096")), "temperature": 0.7}
-
-
-def _default_think():
-    """ROBOT_THINK: true (default -- Qwen answers better with it) / false, or a level the model lists
-    in `ollama show` (gpt-oss: low/medium/high). qwen3.5 only knows true/false, so 'low' = true there.
-    Cost, measured on qwen3.5:4b in chat: ~5 s/turn thinking vs ~1.3 s/turn with false."""
-    v = os.getenv("ROBOT_THINK", "true").strip().lower()
-    bools = {"1": True, "true": True, "yes": True, "on": True, "0": False, "false": False, "no": False, "off": False}
-    return bools.get(v, v)
-
-
-THINK = _default_think()
+# env defaults; any response() call can override them. Context length is Ollama's own default
+# (4k under 24 GB VRAM); raise it with options={"num_ctx": ...} or the server's OLLAMA_CONTEXT_LENGTH.
+MODEL = os.getenv("OLLAMA_MODEL", "qwen3.5:4b")
+OPTS = {"temperature": 0.7}
+# true (Qwen answers better thinking; measured ~5 s/turn vs ~1.3 s off) / false / a level (gpt-oss: low..high)
+_think = os.getenv("OLLAMA_THINK", "true").strip().lower()
+THINK = {"true": True, "false": False}.get(_think, _think)
 
 
 @cache

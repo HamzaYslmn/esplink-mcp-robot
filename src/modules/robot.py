@@ -51,7 +51,7 @@ class Robot:
 
         def read_mv():
             b = bridge()
-            b.adc.config(pin, atten=11)                         # ~3.3V range; idempotent, survives reconnect
+            b.adc.config(pin)                                   # 11 dB = ~3.3V range; idempotent
             return b.adc.read_mv(pin)
 
         def charging():

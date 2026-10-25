@@ -25,7 +25,7 @@ how the coding session feels.
 - board_* (only with a board attached): the ESP32's peripherals over Pip's own link.
   Pins are GPIO numbers; set board_gpio_mode before read/write; bytes are hex strings.
   Call board_status before acting. The OLED owns I2C bus 0
-  (SDA 21 / SCL 22): don't deinit or re-pin it, and avoid board_system_reset /
+  (board_status shows its pins): don't deinit or re-pin it, and avoid board_system_reset /
   radio_off / deep_sleep -- they drop Pip's Bluetooth link.
 """
 

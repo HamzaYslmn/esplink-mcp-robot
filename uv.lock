@@ -98,11 +98,11 @@ wheels = [
 
 [[package]]
 name = "cachetools"
-version = "7.2.4"
+version = "7.2.5"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/3a/5d/15ea0494ebcb9062c7ca79bf026cbba380a50538ae73753fb40bdffa79e2/cachetools-7.2.4.tar.gz", hash = "sha256:e0203b04b75fe13e62098eeb5b2018c4eb1a14c04e2b5b450e70db3ee7e92ec5", size = 44251, upload-time = "2026-10-19T19:09:44.931Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/e5/43f9a3f926cc182a0ee95cfd53ec0b5ac0e2cdafa184af6fc50166fd03fd/cachetools-7.2.5.tar.gz", hash = "sha256:a2223b80de434291ddf4c105354e533bbaf4d29382f5d1bc3e4b9332cb31061e", size = 46088, upload-time = "2026-10-25T08:53:17.172Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5a/4c/694f7d44f2399b3901232d6ded1c88442a02fc8141936396d9289d951848/cachetools-7.2.4-py3-none-any.whl", hash = "sha256:4cfbebf3eec4040d2073b19c460511ad47eef7b852dbf9a0d385099b4dafa31e", size = 18571, upload-time = "2026-10-19T19:09:43.296Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/bd/bd8f45fbdf05ce06dbadda61bf0a09844bb0cf0a048d7f5c4a368d437e24/cachetools-7.2.5-py3-none-any.whl", hash = "sha256:9033308cc26b678784a27b096aab1541b9e698d785c3e9918b691ccd458d88df", size = 19132, upload-time = "2026-10-25T08:53:15.638Z" },
 ]
 
 [[package]]
@@ -413,20 +413,19 @@ serial = [
 
 [[package]]
 name = "esplink"
-version = "1.0.2"
+version = "3.0.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bleak" },
     { name = "pyserial" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/5d/90/f80d650f9db4c58cf64d678ef9066b41473555c8f87dc0e400e3a03ef929/esplink-1.0.2.tar.gz", hash = "sha256:d8a9b308bbb573739e630b0cfafa8b8e78ad123562a796667758148ca284b57f", size = 1760560, upload-time = "2026-10-25T00:01:18.63Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/67/b4/708ccb34d92000e938a1ed9798d387127e503c72a2cb74690e70f0a4ec14/esplink-3.0.0.tar.gz", hash = "sha256:0157dfc11b50a53a03b49a146203949dc70e8c76f9cb84c7e7d110889bb72f7d", size = 2763139, upload-time = "2026-10-25T11:40:46.907Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f1/ea/8b7b5ebca0f331b053b78188d5b5593bef9048e545e06d3a4bde523735f1/esplink-1.0.2-py3-none-any.whl", hash = "sha256:3b1da028d3ce55ceef513cddff80a46efe77eae646c9cc790b858dff0ee9a173", size = 1446667, upload-time = "2026-10-25T00:01:16.459Z" },
+    { url = "https://files.pythonhosted.org/packages/bd/88/d9e796f0683f3b306b93c18a65879351abdfe590b235fa3c4dcd10047c8d/esplink-3.0.0-py3-none-any.whl", hash = "sha256:973da61bd9135164192b08d0c9cab38ce00dee5a86931c9357d07591a2cd1cbf", size = 2545515, upload-time = "2026-10-25T11:40:45.061Z" },
 ]
 
 [package.optional-dependencies]
 all = [
-    { name = "bleak" },
     { name = "esptool" },
     { name = "fastmcp" },
     { name = "pillow" },
@@ -447,7 +446,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "esplink", extras = ["all"], specifier = ">=1.0.2" },
+    { name = "esplink", extras = ["all"], specifier = ">=3.0.0" },
     { name = "fastmcp", specifier = ">=4.1.3" },
     { name = "numpy", specifier = ">=2.5.4" },
     { name = "ollama", specifier = ">=0.6.3" },

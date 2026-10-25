@@ -35,16 +35,18 @@ Bluetooth link — those ask first (add `"mcp__esplink-buddy__*"` to pre‑appro
 
 ## Flash the ESP32 (once)
 
-Needs a **classic ESP32** (ESP‑32S/D — S3/C3/C6/H2 are USB‑only and won't do Bluetooth), a
+Needs a **classic ESP32** or an **ESP32‑S3** (`esplink flash` picks the right image from the USB ID), a
 **128×64 I²C OLED** (SSD1306/SH1106), and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync                  # install deps — Python ≥3.13
 uv run esplink flash     # flash firmware over USB (once) — pick the port
-uv run esplink info      # unplug USB, confirm Bluetooth reaches the board
+uv run esplink -b info   # unplug USB, confirm Bluetooth reaches the board
+uv run esplink -b set-name pip   # optional: name it, then ROBOT_BLE_TARGET=pip picks it among several
 ```
 
-Wire the OLED **VCC→3V3, GND→GND, SDA→GPIO21, SCL→GPIO22**. The default Bluetooth password
+Wire the OLED **VCC→3V3, GND→GND, SDA→GPIO1, SCL→GPIO2** (classic ESP32: GPIO1 is its USB
+serial TX, so use 21/22 and set `ROBOT_OLED_SDA=21` / `ROBOT_OLED_SCL=22`). The default Bluetooth password
 `esplink` matches Pip's defaults — nothing to configure.
 
 <details><summary>Prefer the Arduino IDE?</summary>
@@ -77,12 +79,13 @@ arguments.
 |---|---|---|
 | `ROBOT_NO_DISPLAY` | `false` | `true` = same as `-e`: emulate the OLED in a window |
 | `ROBOT_SCREEN_PPI` | _(auto)_ | Your monitor's PPI, to size the emulator to a true 0.96″ |
-| `ROBOT_BLE_TARGET` | _(auto)_ | Board name or MAC (empty = first found) |
+| `ROBOT_BLE_TARGET` | _(auto)_ | Board name or MAC (empty = first found; set it when several boards are near) |
 | `ROBOT_PASSWORD` | `esplink` | Firmware Bluetooth password |
-| `ROBOT_OLED_SDA` / `_SCL` | `21` / `22` | OLED I²C pins |
+| `ROBOT_OLED_SDA` / `_SCL` | `1` / `2` | OLED I²C pins (classic ESP32: use 21/22) |
 | `ROBOT_BRIGHTNESS` | `255` | Panel brightness cap, 0–255 |
 | `ROBOT_FPS` | `24` | Eye frame rate |
-| `ROBOT_MODEL` / `OLLAMA_HOST` | `qwen3.5:4b` / `localhost:11434` | Ollama (chat mode) |
+| `OLLAMA_MODEL` / `OLLAMA_HOST` | `qwen3.5:4b` / `localhost:11434` | Ollama (chat mode) |
+| `OLLAMA_THINK` | `true` | Thinking: `true` / `false` / a level (`low`…`high`) |
 
 ## Develop the face without an OLED
 

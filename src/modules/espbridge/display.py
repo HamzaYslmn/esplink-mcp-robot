@@ -177,29 +177,28 @@ class WindowDisplay:
 
 
 class Display:
-    """OLED bound to BridgeManager's live link. BLE has no in-place reconnect, so the
-    manager heals a drop by handing back a *new* Bridge; the OLED cached the old one,
-    so we rebind it here. Render-loop errors are already tolerated by EyeEngine."""
+    """OLED on BridgeManager's live link. BLE has no in-place reconnect, so a healed drop is a *new*
+    Bridge -- rebuild the OLED on it. Render-loop errors are already tolerated by EyeEngine."""
 
-    def __init__(self, mgr, *, sda, scl, width=128, height=64):
+    width, height = 128, 64
+
+    def __init__(self, mgr, *, sda, scl):
         from esplink.drivers.oled import OLED
-        self._OLED, self._mgr = OLED, mgr
-        self._kw = {"sda": sda, "scl": scl, "width": width, "height": height}
-        self.width, self.height = width, height
+        self._mgr, self._new = mgr, lambda b: OLED(b, sda=sda, scl=scl)
         self._bridge = mgr.bridge()                 # first connect (raises -> face-only)
-        self._oled = OLED(self._bridge, **self._kw)
+        self._oled = self._new(self._bridge)
 
     def _panel(self):
         b = self._mgr.bridge()                      # live link, reconnecting on demand
         if b is not self._bridge:                   # healed as a new Bridge -> rebind
-            self._bridge, self._oled = b, self._OLED(b, **self._kw)
+            self._bridge, self._oled = b, self._new(b)
         return self._oled
 
     def show(self, image=None):
         self._panel().show(image)
 
     def contrast(self, value):
-        self._panel().contrast(value)          # OLED brightness, 0..255
+        self._panel().contrast(value)               # OLED brightness, 0..255
 
     def clear(self):
         self._panel().clear()
@@ -207,19 +206,13 @@ class Display:
 
 def connect_display():
     """Open a self-healing, BLE-only bridge + OLED from env. Returns (manager, display)."""
+    import esplink
+    # ble=True keeps reconnects on Bluetooth; no target = first board found; no password = "esplink"
+    mgr = esplink.BridgeManager(name=os.getenv("ROBOT_BLE_TARGET") or None, ble=True,
+                                password=os.getenv("ROBOT_PASSWORD"))
     try:
-        import esplink
-    except ImportError as e:
-        raise RuntimeError("esplink not installed -- run `uv sync`.") from e
-
-    target = os.getenv("ROBOT_BLE_TARGET")
-    pw = os.getenv("ROBOT_PASSWORD", "esplink") or None   # firmware password; empty = none
-    # ble=True pins Bluetooth (no USB/Wi-Fi fallback, reconnects stay on BLE); name=None auto-picks.
-    mgr = esplink.BridgeManager(name=target or None, ble=True, password=pw)
-    try:
-        return mgr, Display(mgr,
-                            sda=int(os.getenv("ROBOT_OLED_SDA", "21")),
-                            scl=int(os.getenv("ROBOT_OLED_SCL", "22")))
+        return mgr, Display(mgr, sda=int(os.getenv("ROBOT_OLED_SDA", "1")),
+                            scl=int(os.getenv("ROBOT_OLED_SCL", "2")))
     except Exception:
         mgr.shutdown()                              # board up but no OLED -> don't leak the BLE link
         raise
