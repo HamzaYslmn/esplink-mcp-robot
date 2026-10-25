@@ -42,7 +42,7 @@ def bind(locate):
 
 def _get(url):
     # a real User-Agent is required by the Nominatim usage policy
-    req = urllib.request.Request(url, headers={"User-Agent": "pip-robot (github.com/HamzaYslmn/esp-bridge-mcp-robot)"})
+    req = urllib.request.Request(url, headers={"User-Agent": "esplink-buddy (github.com/HamzaYslmn/esp-bridge-mcp-robot)"})
     with urllib.request.urlopen(req, timeout=_TIMEOUT) as r:
         return json.load(r)
 

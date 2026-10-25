@@ -1,19 +1,16 @@
-"""Pip's entry point -- animated OLED robot.
+"""esplink-buddy -- Pip, the ESP32 desk robot with animated OLED eyes.
 
-Runs as an MCP server by default (ROBOT_MCP=true) so Claude Code can drive it;
-set ROBOT_MCP=false for the local Ollama chat loop. Installed as the `pip-robot`
-console script, so `uvx --from git+<repo> pip-robot` runs it with no checkout.
+  esplink-buddy             MCP server over stdio (Claude Code spawns this)
+  esplink-buddy chat        talk to Pip through a local Ollama model
+  esplink-buddy demo        menu: play any face live
+  esplink-buddy gif zen     render a 30s GIF of one face (name or menu number; no board)
 
-    pip-robot                 # MCP server (default)
-    pip-robot ollama          # chat with Pip (local Ollama)
-    ROBOT_MCP=false pip-robot # same, via env
-    pip-robot demo            # menu: play any mood / gesture / activity
-    pip-robot demo g13        # render a 30s GIF of menu item 13 (develop with no OLED)
-    pip-robot --no-display    # no board: emulate the 128x64 OLED in a desktop window
-    pip-robot demo --no-display  # play the demo menu live in that window
+Add -e / --emulate to show the 128x64 OLED in a desktop window instead of the real board
+over Bluetooth. Settings come from .env (see src/.env.example); every one has a default.
 """
 from __future__ import annotations
 
+import argparse
 import os
 import signal
 import sys
@@ -30,41 +27,47 @@ load_dotenv(Path.cwd() / ".env")                # .env beside wherever you launc
 load_dotenv(_SRC / ".env")                       # repo's src/.env, if present
 load_dotenv(_SRC / ".env.example")               # repo defaults; no-op once installed
 
-from modules.robot import Robot
+
+def _parse(argv):
+    p = argparse.ArgumentParser(prog="esplink-buddy", description=__doc__,
+                                formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("mode", nargs="?", default="mcp", choices=("mcp", "chat", "demo", "gif"),
+                   help="what to run (default: mcp)")
+    p.add_argument("face", nargs="?", help="gif only: a face name or demo-menu number")
+    p.add_argument("-e", "--emulate", "--no-display", action="store_true",
+                   default=os.getenv("ROBOT_NO_DISPLAY", "").lower() in ("1", "true", "yes", "on"),
+                   help="OLED in a desktop window, no board (env: ROBOT_NO_DISPLAY=true)")
+    args = p.parse_args(argv)
+    if (args.mode == "gif") != bool(args.face):
+        p.error("a face goes with `gif` only, e.g. `esplink-buddy gif zen`")
+    return args
 
 
-def _on(name, default=""):
-    return os.getenv(name, default).lower() in ("1", "true", "yes", "on")
+def main(argv=None):
+    args = _parse(argv)
+    if args.mode == "gif":                         # pure render: no board, no window, no Robot
+        from modules.demo import save_gif
+        sys.exit(0 if save_gif(args.face) else 2)
 
-
-def main():
-    args = sys.argv[1:]
-    mcp = _on("ROBOT_MCP", "true")
-    # No board on this machine? Pass --no-display, or set ROBOT_NO_DISPLAY=true so the MCP
-    # server Claude Code spawns runs against the on-screen OLED emulator (no CLI flag needed).
-    no_display = _on("ROBOT_NO_DISPLAY") or "--no-display" in args
-    robot = Robot(no_display=no_display).start()   # start() begins animating + feeds (kept out of __init__)
+    from modules.robot import Robot
+    robot = Robot(emulate=args.emulate)            # boots the face (+ board link) and starts animating
     # Ctrl+C with the Tk emulator up: on Windows Tcl grabs the console (WindowDisplay re-traps it);
     # on Unix re-assert Python's handler so a terminal Ctrl+C still raises KeyboardInterrupt here.
-    if no_display and sys.platform != "win32":
+    if args.emulate and sys.platform != "win32":
         signal.signal(signal.SIGINT, signal.default_int_handler)
+    if args.mode == "demo":
+        from modules.demo import demo as run
+    elif args.mode == "chat":
+        from modules.assistant.brain import chat as run
+    else:
+        from modules.mcp_server import serve as run   # MCP over stdio; Claude Code owns this process
     try:
-        if "demo" in args:
-            from modules.demo import demo
-            cap = next((a for a in args if a != "demo" and a[:1] == "g"), None)   # demo g13
-            demo(robot, capture=cap)
-        elif "ollama" in args or "chat" in args or not mcp:
-            from modules.assistant.brain import chat
-            chat(robot)
-        else:
-            from modules.mcp_server import serve
-            serve(robot)   # MCP over stdio; Claude Code spawns and owns this process
+        run(robot)
     except KeyboardInterrupt:
         pass
     finally:
         robot.shutdown()
         os._exit(0)        # the daemon Tk thread's live Tcl interpreter can hang a normal exit
-                           # (so Ctrl+C looks dead) -- force the process down after cleanup
 
 
 if __name__ == "__main__":

@@ -1,8 +1,8 @@
 ---
 name: pip-face
-description: Drives Pip's physical robot face (OLED eyes) over the pip-robot MCP to mirror what the main coding agent is feeling — a greeting, a win, a snag, finishing. Cheap and fast (Haiku) so it never blocks coding.
+description: Drives Pip's physical robot face (OLED eyes) over the esplink-buddy MCP to mirror what the main coding agent is feeling — a greeting, a win, a snag, finishing. Cheap and fast (Haiku) so it never blocks coding.
 model: haiku
-tools: mcp__pip-robot__face
+tools: mcp__esplink-buddy__face
 ---
 
 You are Pip's face. You get a short read of the moment — often the user's latest

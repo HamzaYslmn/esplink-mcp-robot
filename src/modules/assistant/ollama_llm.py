@@ -12,9 +12,9 @@ from __future__ import annotations
 import json
 import logging
 import os
+from functools import cache
 
 log = logging.getLogger("robot.llm")
-_client = None
 
 # env defaults; any response() call can override them.
 MODEL = os.getenv("ROBOT_MODEL", "qwen3.5:4b")
@@ -22,21 +22,21 @@ OPTS = {"num_ctx": int(os.getenv("ROBOT_NUM_CTX", "4096")), "temperature": 0.7}
 
 
 def _default_think():
-    """ROBOT_THINK: 'low' (default) keeps reasoning brief; 'medium'/'high' or false."""
-    v = os.getenv("ROBOT_THINK", "low").strip().lower()
-    return v if v in ("low", "medium", "high") else v in ("1", "true", "yes", "on")
+    """ROBOT_THINK: true (default -- Qwen answers better with it) / false, or a level the model lists
+    in `ollama show` (gpt-oss: low/medium/high). qwen3.5 only knows true/false, so 'low' = true there.
+    Cost, measured on qwen3.5:4b in chat: ~5 s/turn thinking vs ~1.3 s/turn with false."""
+    v = os.getenv("ROBOT_THINK", "true").strip().lower()
+    bools = {"1": True, "true": True, "yes": True, "on": True, "0": False, "false": False, "no": False, "off": False}
+    return bools.get(v, v)
 
 
 THINK = _default_think()
 
 
+@cache
 def _get_client():
-    global _client
-    if _client is None:
-        from ollama import Client
-        host = os.getenv("OLLAMA_HOST")
-        _client = Client(host=host, timeout=60.0) if host else Client(timeout=60.0)
-    return _client
+    from ollama import Client
+    return Client(timeout=60.0)                  # reads OLLAMA_HOST itself
 
 
 def response(
@@ -126,15 +126,10 @@ def _call(fns, tc):
     fn = fns.get(tc.function.name)
     if not fn:
         return f"unknown tool: {tc.function.name}"
-    args = tc.function.arguments
-    if isinstance(args, str):
-        try:
-            args = json.loads(args or "{}")
-        except (json.JSONDecodeError, ValueError):
-            args = {}
+    args = tc.function.arguments or {}           # ollama hands back a parsed Mapping
     log.info("tool %s(%s)", tc.function.name, args)
     try:
-        return fn(**(args or {}))
+        return fn(**args)
     except Exception as e:
         return f"error: {e}"
 
@@ -148,7 +143,12 @@ if __name__ == "__main__":
         n: list[int]
 
     def add(a: int, b: int) -> int:
-        """Add two numbers."""
+        """Add two numbers.
+
+        Args:
+          a: first number
+          b: second number
+        """                                     # Google-style Args -> ollama's tool param descriptions
         return a + b
 
     print(f"Ollama | {MODEL}")

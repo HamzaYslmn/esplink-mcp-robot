@@ -1,10 +1,9 @@
 {
   "mcpServers": {
-    "pip-robot": {
+    "esplink-buddy": {
       "type": "stdio",
       "command": "uv",
-      "args": ["run", "src/main.py"],
-      "env": { "ROBOT_MCP": "true", "ROBOT_NO_DISPLAY": "true" }
+      "args": ["run", "src/main.py", "--emulate"]
     }
   }
 }

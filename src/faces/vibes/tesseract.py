@@ -16,7 +16,7 @@ in combined 4D(w, weighted heavier) + 3D(z) distance -- are drawn **bold (2px)**
 perspective keeps the inner cube clearly visible while still cueing which cell is in front.
 
 Refs: simple vs double rotations in SO(4); line-weight aerial perspective for legible wireframes.
-Self-check: `cd src && uv run python -m modules.espbridge.eyes.vibes.tesseract`."""
+Self-check: `cd src && uv run python -m faces.vibes.tesseract`."""
 import numpy as np
 
 from ..primitives import frame, smoothstep

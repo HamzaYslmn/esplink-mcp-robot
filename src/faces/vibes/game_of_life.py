@@ -6,7 +6,7 @@ smooth. Re-seeds whenever the board settles -- static or a short cycle -- after 
 
 CPU: 2px cells (a 64x32 board), the sim only advances on a new generation, and each frame writes the
 1-bit panel back in place (no per-frame PIL image is built).
-Self-check: `cd src && uv run python -m modules.espbridge.eyes.vibes.game_of_life`."""
+Self-check: `cd src && uv run python -m faces.vibes.game_of_life`."""
 import numpy as np
 
 from ..primitives import frame

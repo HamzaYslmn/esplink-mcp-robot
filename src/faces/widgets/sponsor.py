@@ -2,7 +2,7 @@
 
 A looping widget: set_activity('sponsor') and Pip shows a QR linking to
 https://github.com/sponsors/HamzaYslmn with the kawaii face (round eyes, blush, twinkles)
-resized into the free right half. The QR is baked in (the URL never changes) so eyes/ keeps
+resized into the free right half. The QR is baked in (the URL never changes) so faces/ keeps
 no encoder dependency.
 
 It's drawn inverted -- lit on a black screen -- so it's dim (kind to the OLED) and the black

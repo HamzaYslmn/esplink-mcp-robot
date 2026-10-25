@@ -18,7 +18,7 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from modules.espbridge.eyes import (  # noqa: E402
+from faces import (  # noqa: E402
     ACTIONS, GESTURES, LOOPING, MOODS, PLAYABLE, REACTIONS, VIBES, WIDGETS, EyeEngine)
 
 W, H = 128, 64
@@ -60,7 +60,7 @@ class Driver:
             self.eyes.set_mood("neutral")
             self.run(SETTLE)                 # settle to a plain face, then fire the one-shot
             self.eyes.play_gesture(name)
-            return _gesture_dur(name)
+            return PLAYABLE[name].dur
         if kind == "activity":
             self.eyes.set_activity(name)
             self.run(LEAD)
@@ -68,10 +68,6 @@ class Driver:
         self.eyes.set_mood(name)
         self.run(LEAD)
         return MOOD_SEC + LEAD
-
-
-def _gesture_dur(name):
-    return PLAYABLE[name].dur            # gestures + reactions
 
 
 def _load_font(size=16):
@@ -102,9 +98,9 @@ def _script():
     for m in MOODS:
         yield f"mood: {m}", MOOD_SEC, "mood", m
     for g in GESTURES:
-        yield f"gesture: {g}", max(0.8, _gesture_dur(g) + GEST_PAD), "gesture", g
+        yield f"gesture: {g}", max(0.8, PLAYABLE[g].dur + GEST_PAD), "gesture", g
     for r in REACTIONS:
-        yield f"reaction: {r}", max(0.8, _gesture_dur(r) + GEST_PAD), "gesture", r
+        yield f"reaction: {r}", max(0.8, PLAYABLE[r].dur + GEST_PAD), "gesture", r
     for a in ACTIONS:
         yield f"activity: {a}", ACT_SEC, "activity", a
     for v in VIBES:
@@ -159,13 +155,8 @@ def preview(name):
     name = name.lower()
     kind = _kind(name)
     if not kind:
-        print(f"unknown face: {name!r}", file=sys.stderr)
-        print("moods:      " + " ".join(MOODS), file=sys.stderr)
-        print("gestures:   " + " ".join(GESTURES), file=sys.stderr)
-        print("reactions:  " + " ".join(REACTIONS), file=sys.stderr)
-        print("activities: " + " ".join(ACTIONS), file=sys.stderr)
-        print("vibes:      " + " ".join(VIBES), file=sys.stderr)
-        print("widgets:    " + " ".join(WIDGETS), file=sys.stderr)
+        print(f"unknown face: {name!r}; try one of: {' '.join([*MOODS, *PLAYABLE, *LOOPING])}",
+              file=sys.stderr)
         return 2
 
     drv = Driver()

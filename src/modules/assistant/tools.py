@@ -2,12 +2,12 @@
 Each takes simple args so any caller (a model, or Claude Code) can drive the face and any ESP32
 pin. The valid face/activity names are read straight from the eye registries, so adding or moving
 an effect never touches this file -- the folder __init__ order tuples are the one source of truth
-(see eyes/spec.py)."""
+(see faces/spec.py)."""
 from __future__ import annotations
 
 import random
 
-from modules.espbridge.eyes import ACTIONS, GESTURES, MOODS, REACTIONS, VIBES, WIDGETS
+from faces import ACTIONS, GESTURES, MOODS, REACTIONS, VIBES, WIDGETS
 
 _MOODS = ", ".join(MOODS)
 _MOVES = ", ".join(("none", *GESTURES, *REACTIONS))           # one-shot: idle glances + reflexes

@@ -11,7 +11,7 @@ interferes with its reflections. A finite well never disperses to a flat haze, s
 forever -- no relaunch. |psi|^2 is ordered-dithered to 1-bit at 2px.
 
 CPU: two FFTs per substep on a 128x64 grid (microseconds), a few substeps per frame, written back in
-place. Self-check: `cd src && uv run python -m modules.espbridge.eyes.vibes.quantum`."""
+place. Self-check: `cd src && uv run python -m faces.vibes.quantum`."""
 import numpy as np
 
 from ..primitives import frame

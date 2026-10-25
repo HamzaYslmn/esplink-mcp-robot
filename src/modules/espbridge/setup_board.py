@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import espbridge
+import esplink
 
 ENV = Path(__file__).parents[2] / ".env"  # src/.env (where main.py reads it)
 
@@ -19,7 +19,7 @@ def _set_env(key, value):
 
 
 def main():
-    with espbridge.connect(ble=True) as esp:
+    with esplink.connect(ble=True) as esp:
         esp.set_name("pip")
         mac = esp.info.mac
         print(f"named board 'pip', MAC = {mac}")

@@ -2,12 +2,12 @@
 
 Every turn the model returns a structured reply -- {"response", "emotion",
 "gesture"} -- whose emotion/gesture animate Pip's face, and it acts on the world
-through tool calls (set_activity + generic pin tools). History is kept across turns.
+through tool calls (face + pin tools). History is kept across turns.
 """
 from __future__ import annotations
 
 from modules.assistant import ollama_llm
-from modules.espbridge.eyes import GESTURES, MOODS, REACTIONS
+from faces import GESTURES, MOODS, REACTIONS
 
 MAX_HISTORY = 24  # ~12 exchanges
 
@@ -44,29 +44,9 @@ know a pin, ask.
 Stay in character.""" % (", ".join(MOODS), ", ".join(_GESTURES))
 
 
-class Brain:
-    def __init__(self, tools, eyes):
-        # the resting emotion/gesture come from each structured reply; the model may still call
-        # face('<activity>') to show a busy loop mid-turn (the reply's emotion wins at turn end).
-        self.tools = tools
-        self.eyes = eyes
-        self.history: list[dict] = []
-
-    def respond(self, text: str) -> str:
-        reply = ollama_llm.response(text, instruction=SYSTEM_PROMPT, history=self.history,
-                                    tools=self.tools, schema=REPLY_SCHEMA)
-        del self.history[:-MAX_HISTORY]
-
-        emotion = reply.get("emotion") if reply.get("emotion") in MOODS else "neutral"
-        self.eyes.play_gesture(reply.get("gesture", "none"))  # one-shot first...
-        self.eyes.set_mood(emotion)                           # ...then settle the face
-        return reply.get("response") or "..."
-
-
 def chat(robot):
     """Local Ollama chat loop in the terminal -- talk to Pip, face follows each reply."""
-    eyes = robot.eyes
-    brain = Brain(robot.tools, eyes)
+    eyes, history = robot.eyes, []
     print("--- Pip is awake --- (say 'bye' or Ctrl-C to sleep)\n")
     while True:
         try:
@@ -79,9 +59,13 @@ def chat(robot):
         if text.lower() in {"bye", "exit", "quit", "q"}:
             break
         eyes.play_gesture("blink")
-        eyes.set_activity("thinking")   # busy face; model may switch it
+        eyes.set_activity("thinking")   # busy face; the model may switch it via face()
         try:
-            reply = brain.respond(text)
+            reply = ollama_llm.response(text, instruction=SYSTEM_PROMPT, history=history,
+                                        tools=robot.tools, schema=REPLY_SCHEMA)
         finally:
             eyes.set_activity("idle")    # never leave it stuck busy
-        print(f"Pip> {reply}\n")
+        del history[:-MAX_HISTORY]
+        eyes.play_gesture(reply.get("gesture", "none"))   # one-shot first, then settle the face
+        eyes.set_mood(reply.get("emotion"))               # set_mood falls back to neutral on junk
+        print(f"Pip> {reply.get('response') or '...'}\n")

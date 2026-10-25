@@ -16,7 +16,7 @@ glance helper). Reach for those shared helpers rather than re-rolling them per f
 pseudo-randomness goes through one `rand()`. Single-use helpers live in their own effect file.
 Add an effect by dropping a file in a folder + one line in its __init__ order list -- see
 spec.py. The whole package is self-contained (relative imports only), so it drops into any app:
-copy the eyes/ folder, `pip install pillow`, and drive EyeEngine."""
+copy the faces/ folder, `pip install pillow`, and drive EyeEngine."""
 from .actions import ACTIONS
 from .gestures import GESTURES
 from .moods import MOODS

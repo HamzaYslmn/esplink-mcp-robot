@@ -1,122 +1,84 @@
-"""Interactive demo menu -- pick any mood / gesture / activity to play, or save a GIF.
-Dev tooling next to the launcher (cli.py dispatches it); drives a started Robot's eyes."""
+"""Demo menu (`esplink-buddy demo`) -- play any face live, or save one as a GIF
+(`esplink-buddy gif <name|number>`, or `g<name|number>` inside the menu)."""
 from __future__ import annotations
 
 import time
 
-from modules.espbridge.eyes import ACTIONS, GESTURES, MOODS, REACTIONS, VIBES, WIDGETS
+from faces import ACTIONS, GESTURES, MOODS, REACTIONS, VIBES, WIDGETS
+
+# One column per folder; the menu numbers run through them in this order.
+_COLUMNS = (("MOODS", MOODS), ("GESTURES", GESTURES), ("REACTIONS", REACTIONS),
+            ("ACTIONS", ACTIONS), ("VIBES", VIBES), ("WIDGETS", WIDGETS))
+ITEMS = [n for _, reg in _COLUMNS for n in reg]      # flat list the menu numbers index into
 
 
-def _menu_items():
-    """The flat (kind, name) list the demo menu numbers index into. One-shots (gestures,
-    reactions) then loops (activities, vibes, widgets) sit contiguous, so the columns map."""
-    return ([("mood", m) for m in MOODS]
-            + [("gesture", g) for g in GESTURES]
-            + [("reaction", r) for r in REACTIONS]
-            + [("activity", a) for a in ACTIONS]
-            + [("vibe", v) for v in VIBES]
-            + [("widget", w) for w in WIDGETS])
+def _find(token):
+    """A menu number or a face name -> the face name (None if neither)."""
+    if token.isdigit():
+        return ITEMS[int(token) - 1] if 1 <= int(token) <= len(ITEMS) else None
+    return token if token in ITEMS else None
 
 
-def _capture(token, items):
-    """Render a 30s GIF for a 'gNN'/'gNAME' token -- develop the face with no OLED."""
-    body = token[1:]
-    if body.isdigit() and 1 <= int(body) <= len(items):
-        kind, name = items[int(body) - 1]
-    else:
-        match = next((it for it in items if it[1] == body), None)
-        if not match:
-            print(f"can't GIF {token!r} (use gNN or gNAME from the menu)")
-            return
-        kind, name = match
-    from modules.espbridge.eyes.record import record_gif
-    print(f"-> rendering 30s GIF of {kind}: {name} ...")
-    print(f"wrote {record_gif(name)}")
+def save_gif(token):
+    """Render a 30s GIF of a face (name or menu number) into the cwd; returns the path, or None."""
+    name = _find(str(token).lower())
+    if not name:
+        print(f"unknown face {token!r} -- use a name or number from `esplink-buddy demo`")
+        return None
+    from faces.record import record_gif
+    print(f"-> rendering 30s GIF of {name} ...")
+    out = record_gif(name)
+    print(f"wrote {out}")
+    return out
 
 
-def demo(robot, capture=None):
+def _show_menu():
+    w = max(map(len, ITEMS)) + 4                       # "NN. " prefix + widest name
+    cols, off = [], 0
+    for title, reg in _COLUMNS:                        # each column numbers on from the last
+        cols.append((title, [f"{off + i:>2}. {n:<{w - 4}}" for i, n in enumerate(reg, 1)]))
+        off += len(reg)
+    rule = "=" * (w * len(cols) + 3 * (len(cols) - 1))
+    print(f"\n  {rule}\n   Pip demo menu\n  {rule}")
+    print("  " + " | ".join(f"{t:<{w}}" for t, _ in cols))
+    print("  " + "-+-".join("-" * w for _ in cols))
+    for r in range(max(len(c) for _, c in cols)):
+        print("  " + " | ".join(c[r] if r < len(c) else " " * w for _, c in cols).rstrip(" |"))
+    print(f"  {rule}\n  a = play all (2s each)    gNN = save 30s GIF    q = quit    (number or name)")
+
+
+def _play(eyes, name):
+    print(f"-> {name}")
+    if name in MOODS:
+        eyes.set_activity("idle")                      # a mood alone, no loop on top
+    elif name not in GESTURES and name not in REACTIONS:
+        eyes.set_mood("neutral")                       # a loop on a plain face
+    eyes.show(name)
+
+
+def demo(robot):
     """Interactive menu: pick an emotion, gesture or activity to play."""
     eyes = robot.eyes
-    items = _menu_items()
-    if capture:                                  # non-interactive: render one GIF and exit
-        _capture(capture, items)
-        return
-    moods = [n for k, n in items if k == "mood"]
-    gestures = [n for k, n in items if k == "gesture"]
-    reactions = [n for k, n in items if k == "reaction"]
-    activities = [n for k, n in items if k == "activity"]
-    vibes = [n for k, n in items if k == "vibe"]
-    widgets = [n for k, n in items if k == "widget"]
-
-    def show_menu():
-        # six side-by-side columns (one per folder); the printed number indexes into `items`,
-        # so each column's offset is the running total of the columns before it.
-        nm, ng, nr, na, nv = (len(moods), len(gestures), len(reactions),
-                              len(activities), len(vibes))
-        cols = [("MOODS", moods, 0),
-                ("GESTURES", gestures, nm),
-                ("REACTIONS", reactions, nm + ng),
-                ("ACTIONS", activities, nm + ng + nr),
-                ("VIBES", vibes, nm + ng + nr + na),
-                ("WIDGETS", widgets, nm + ng + nr + na + nv)]
-        w = max(len(n) for _, n in items)                       # widest name
-        cw = w + 4                                              # "NN. " prefix + name
-        total = cw * len(cols) + 3 * (len(cols) - 1)            # name cells + " | " gutters
-        cell = lambda i, n: f"{i:>2}. {n:<{w}}"
-        print("\n  " + "=" * total)
-        print("  " + " Pip demo menu".ljust(total))
-        print("  " + "=" * total)
-        print("  " + " | ".join(f"{t:<{cw}}" for t, _, _ in cols))
-        print("  " + "-+-".join("-" * cw for _ in cols))
-        for r in range(max(len(c[1]) for c in cols)):
-            cells = [cell(off + r + 1, lst[r]) if r < len(lst) else " " * cw
-                     for _, lst, off in cols]
-            while len(cells) > 1 and not cells[-1].strip():     # drop trailing empty columns
-                cells.pop()
-            print("  " + " | ".join(cells))
-        print("  " + "=" * total)
-        print("  a = play all (2s each)    gNN = save 30s GIF    q = quit    (number or name)")
-
-    def play(kind, name):
-        print(f"-> {kind}: {name}")
-        if kind == "mood":
-            eyes.set_activity("idle")
-            eyes.set_mood(name)
-        elif kind in ("gesture", "reaction"):    # both are one-shot moves
-            eyes.play_gesture(name)
-        else:                                    # activity, vibe or widget -- all loop
-            eyes.set_mood("neutral")
-            eyes.set_activity(name)
-
-    show_menu()
+    _show_menu()
     while True:
         try:
             choice = input("demo> ").strip().lower()
         except (EOFError, KeyboardInterrupt):
             print()
             break
-        if not choice:
-            show_menu()
-            continue
         if choice in {"q", "quit", "exit"}:
             break
-        if choice == "a":
-            for kind, name in items:
-                play(kind, name)
+        if not choice:
+            _show_menu()
+        elif choice == "a":
+            for name in ITEMS:
+                _play(eyes, name)
                 time.sleep(2.0)
             eyes.set_activity("idle")
-            continue
-        if len(choice) > 1 and choice[0] == "g" and \
-                (choice[1:].isdigit() or any(it[1] == choice[1:] for it in items)):
-            _capture(choice, items)
-            continue
-        match = None
-        if choice.isdigit() and 1 <= int(choice) <= len(items):
-            match = items[int(choice) - 1]
-        else:
-            match = next((it for it in items if it[1] == choice), None)
-        if match:
-            play(*match)
+        elif choice[0] == "g" and _find(choice[1:]):   # gzen / g13 -> save a GIF
+            save_gif(choice[1:])
+        elif name := _find(choice):
+            _play(eyes, name)
         else:
             print(f"unknown: {choice!r} (enter a number, name, 'a', or 'q')")
     eyes.set_activity("idle")

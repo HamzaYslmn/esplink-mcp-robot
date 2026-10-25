@@ -1,108 +1,98 @@
 {
-  "enabledMcpjsonServers": ["pip-robot"],
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "enabledMcpjsonServers": ["esplink-buddy"],
   "permissions": {
     "allow": [
-      "mcp__pip-robot__face",
-      "mcp__pip-robot__notify"
+      "mcp__esplink-buddy__face",
+      "mcp__esplink-buddy__notify"
     ]
   },
   "hooks": {
     "SessionStart": [
-      { "matcher": "startup", "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "boot_draw" }, "statusMessage": "Waking Pip" } ] },
-      { "matcher": "resume", "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "chill" } } ] },
-      { "matcher": "clear", "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "neutral", "gesture": "double_blink" } } ] }
-    ],
-    "Setup": [
-      { "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "building" } } ] }
+      { "matcher": "startup", "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "boot_draw" }, "statusMessage": "Waking Pip" } ] },
+      { "matcher": "resume", "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "chill" } } ] },
+      { "matcher": "clear", "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "neutral", "gesture": "double_blink" } } ] }
     ],
     "UserPromptExpansion": [
-      { "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "attentive", "gesture": "scan" } } ] }
+      { "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "attentive", "gesture": "scan" } } ] }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "thinking" } },
-          { "type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/.claude/hooks/dispatch_expression.py\"", "commandWindows": "python \"$env:CLAUDE_PROJECT_DIR\\.claude\\hooks\\dispatch_expression.py\"" }
+          { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "thinking" } },
+          { "type": "command", "command": "echo 'Pip expression policy (each message): the first tool batch of a reply includes the pip-face Haiku subagent (Agent, subagent_type pip-face), run in parallel with the real work, so Pip reacts to the message at once. While replying, the face MCP tool shifts the held mood at each genuine tonal beat (about 2-5 per normal reply, one for a terse answer), with an optional one-shot gesture as punctuation; it builds on the opening face and never strobes. Lifecycle hooks handle activity faces (thinking, editing, searching) on their own.'" }
         ]
       }
     ],
     "PreToolUse": [
-      { "matcher": "Edit|Write|NotebookEdit", "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "editing" } } ] },
-      { "matcher": "Bash|PowerShell", "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "working" } } ] },
-      { "matcher": "Read", "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "scanning" } } ] },
-      { "matcher": "Grep|Glob", "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "searching" } } ] },
-      { "matcher": "WebFetch|WebSearch", "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "connecting" } } ] },
-      { "matcher": "AskUserQuestion", "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "waiting" } } ] }
+      { "matcher": "Edit|Write|NotebookEdit", "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "editing" } } ] },
+      { "matcher": "Bash|PowerShell", "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "working" } } ] },
+      { "matcher": "Read", "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "scanning" } } ] },
+      { "matcher": "Grep|Glob", "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "searching" } } ] },
+      { "matcher": "WebFetch|WebSearch", "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "connecting" } } ] },
+      { "matcher": "AskUserQuestion", "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "waiting" } } ] }
     ],
     "PermissionRequest": [
-      { "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "nervous" } } ] }
+      { "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "nervous" } } ] }
     ],
     "PermissionDenied": [
-      { "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "sad", "gesture": "refuse" } } ] }
+      { "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "sad", "gesture": "refuse" } } ] }
     ],
     "PostToolUseFailure": [
-      { "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "debugging" } } ] }
+      { "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "debugging" } } ] }
     ],
     "Notification": [
-      { "matcher": "permission_prompt", "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "notify", "input": { "reason": "needs you" } } ] },
-      { "matcher": "idle_prompt", "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "smoking" } } ] },
-      { "matcher": "auth_success", "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "happy", "gesture": "wink_right" } } ] }
+      { "matcher": "permission_prompt|agent_needs_input", "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "notify", "input": { "reason": "needs you" } } ] },
+      { "matcher": "idle_prompt", "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "smoking" } } ] },
+      { "matcher": "auth_success", "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "happy", "gesture": "wink_right" } } ] }
     ],
     "SubagentStart": [
-      { "matcher": "^(?!pip-face).*", "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "processing" } } ] }
+      { "matcher": "^(?!pip-face).*", "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "processing" } } ] }
     ],
     "SubagentStop": [
-      { "matcher": "^(?!pip-face).*", "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "lovely" } } ] }
+      { "matcher": "^(?!pip-face).*", "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "lovely" } } ] }
     ],
     "TaskCreated": [
-      { "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "wired", "gesture": "look_up" } } ] }
+      { "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "wired", "gesture": "look_up" } } ] }
     ],
     "TaskCompleted": [
-      { "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "happy", "gesture": "excited" } } ] }
+      { "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "happy", "gesture": "excited" } } ] }
     ],
     "StopFailure": [
-      {
-        "hooks": [
-          { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "glitch" } }
-        ]
-      }
+      { "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "glitch" } } ] }
     ],
     "Stop": [
-      {
-        "hooks": [
-          { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "idle" } }
-        ]
-      }
+      { "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "idle" } } ] }
     ],
     "TeammateIdle": [
-      { "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "sleepy" } } ] }
+      { "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "sleepy" } } ] }
     ],
     "ConfigChange": [
-      { "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "suspicious", "gesture": "squint" } } ] }
+      { "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "suspicious", "gesture": "squint" } } ] }
     ],
     "CwdChanged": [
-      { "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "surprised", "gesture": "look_right" } } ] }
+      { "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "surprised", "gesture": "look_right" } } ] }
     ],
     "WorktreeCreate": [
-      { "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "awe", "gesture": "look_up" } } ] }
+      { "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "awe", "gesture": "look_up" } } ] }
     ],
     "WorktreeRemove": [
-      { "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "gloomy", "gesture": "look_down" } } ] }
+      { "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "gloomy", "gesture": "look_down" } } ] }
     ],
     "PreCompact": [
-      { "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "zen" } } ] }
+      { "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "zen" } } ] }
     ],
     "PostCompact": [
-      { "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "awe", "gesture": "scan_sweep" } } ] }
+      { "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "awe", "gesture": "scan_sweep" } } ] }
     ],
     "Elicitation": [
-      { "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "listening" } } ] }
+      { "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "listening" } } ] }
     ],
     "ElicitationResult": [
-      { "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "happy", "gesture": "nod" } } ] }
+      { "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "happy", "gesture": "nod" } } ] }
     ],
     "SessionEnd": [
-      { "hooks": [ { "type": "mcp_tool", "server": "pip-robot", "tool": "face", "input": { "name": "vibe" }, "statusMessage": "Pip signs off with a random vibe" } ] }
+      { "hooks": [ { "type": "mcp_tool", "server": "esplink-buddy", "tool": "face", "input": { "name": "vibe" }, "statusMessage": "Pip signs off with a random vibe" } ] }
     ]
   }
 }

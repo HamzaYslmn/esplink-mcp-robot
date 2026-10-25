@@ -1,4 +1,4 @@
-"""Connect to the ESP32's OLED over python-esp-bridge (Bluetooth). Env-driven, BLE-only."""
+"""Connect to the ESP32's OLED over esplink (Bluetooth). Env-driven, BLE-only."""
 from __future__ import annotations
 
 import os
@@ -182,7 +182,7 @@ class Display:
     so we rebind it here. Render-loop errors are already tolerated by EyeEngine."""
 
     def __init__(self, mgr, *, sda, scl, width=128, height=64):
-        from espbridge.drivers.oled import OLED
+        from esplink.drivers.oled import OLED
         self._OLED, self._mgr = OLED, mgr
         self._kw = {"sda": sda, "scl": scl, "width": width, "height": height}
         self.width, self.height = width, height
@@ -208,15 +208,18 @@ class Display:
 def connect_display():
     """Open a self-healing, BLE-only bridge + OLED from env. Returns (manager, display)."""
     try:
-        import espbridge
+        import esplink
     except ImportError as e:
-        raise RuntimeError("python-esp-bridge not installed -- run `uv sync`.") from e
+        raise RuntimeError("esplink not installed -- run `uv sync`.") from e
 
     target = os.getenv("ROBOT_BLE_TARGET")
-    pw = os.getenv("ROBOT_PASSWORD", "espbridge") or None   # firmware password; empty = none
-    # A target (name or MAC) goes through `ble=` so the link is BLE-only: no silent
-    # USB-serial (COM) fallback, and reconnects stay on Bluetooth. Bare True auto-picks.
-    mgr = espbridge.BridgeManager(ble=target or True, password=pw)
-    return mgr, Display(mgr,
-                        sda=int(os.getenv("ROBOT_OLED_SDA", "21")),
-                        scl=int(os.getenv("ROBOT_OLED_SCL", "22")))
+    pw = os.getenv("ROBOT_PASSWORD", "esplink") or None   # firmware password; empty = none
+    # ble=True pins Bluetooth (no USB/Wi-Fi fallback, reconnects stay on BLE); name=None auto-picks.
+    mgr = esplink.BridgeManager(name=target or None, ble=True, password=pw)
+    try:
+        return mgr, Display(mgr,
+                            sda=int(os.getenv("ROBOT_OLED_SDA", "21")),
+                            scl=int(os.getenv("ROBOT_OLED_SCL", "22")))
+    except Exception:
+        mgr.shutdown()                              # board up but no OLED -> don't leak the BLE link
+        raise

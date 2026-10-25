@@ -12,7 +12,7 @@ it. Two parts:
   * Particles -- discrete heat motes buoying off the bottom across the face and rising, winking
     out at varied heights so the field is dense low and thins as it climbs (no connected lines).
 
-Self-check: `cd src && uv run python -m modules.espbridge.eyes.vibes.overheated`.
+Self-check: `cd src && uv run python -m faces.vibes.overheated`.
 ponytail: O(cells) mesh per frame, fine at 128x64; bump _STEP down for a finer warp if wanted."""
 import math
 
@@ -95,7 +95,7 @@ def _selfcheck():
     from PIL import ImageDraw
 
     def white(im):                          # nonzero count -- mode "1" stores 1 or 255, both lit
-        return sum(1 for v in im.getdata() if v)
+        return sum(1 for v in im.get_flattened_data() if v)
 
     img = Image.new("1", (128, 64), 0)
     d = ImageDraw.Draw(img)

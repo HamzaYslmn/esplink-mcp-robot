@@ -21,7 +21,7 @@ M+ peaks in memory as a time-of-day schedule, and re-enacts each at the same wal
 today. Just one fetch per 24h -- refreshed when the day rolls over -- yet Pip lives the Sun's storms
 in real time, a day late. Each flare fires `trigger()` once -> the solarflare face; the effect then
 plays through once and self-ends.
-Self-check: `cd src && uv run python -m modules.espbridge.eyes.vibes.solarflare`."""
+Self-check: `cd src && uv run python -m faces.vibes.solarflare`."""
 import datetime
 import json
 import math
@@ -36,7 +36,7 @@ if __name__ == "__main__" and not __package__:    # run the file directly: relat
     import pathlib                                 # package, so put src/ on the path and name ourselves
     import sys
     sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[4]))
-    __package__ = "modules.espbridge.eyes.vibes"
+    __package__ = "faces.vibes"
 
 from ..primitives import frame, rand, smoothstep
 from ..spec import Vibe
@@ -331,7 +331,7 @@ _RETRY = 600.0           # s before retrying the daily fetch if NOAA was unreach
 
 
 def _get(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "pip-robot (github.com/HamzaYslmn/esp-bridge-mcp-robot)"})
+    req = urllib.request.Request(url, headers={"User-Agent": "esplink-buddy (github.com/HamzaYslmn/esp-bridge-mcp-robot)"})
     with urllib.request.urlopen(req, timeout=10) as r:
         return json.load(r)
 
