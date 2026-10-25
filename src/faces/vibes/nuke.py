@@ -46,7 +46,7 @@ import math
 import numpy as np
 
 from ..primitives import rand, smoothstep
-from ..spec import Vibe
+from ..spec import Now, Vibe
 
 _LEYE, _REYE, _EYE_CY = 41, 87, 32                  # eye centres (engine defaults)
 _BX, _GROUND, _APEX = 64, 63, 10                    # blast column x, ground line, ring lift-off ceiling
@@ -56,18 +56,15 @@ _PERIOD = _LOOK + _ARM + _BLAST                     # ~12.7s, one-shot
 _GAZE_UP = -13.0
 _T_DWELL = 5.5                                      # tau when real-time watching ends and the time-lapse begins
 _CLEAR = 8.8                                        # tau when the cloud has dissipated enough for the eyes to return
-_start = [0.0]                                      # this run's start clock (captured each frame by _done)
 
 
-def _done(now, start):
-    """Self-end after one pass; also stash the start so every beat phases off elapsed time."""
-    _start[0] = start
-    return now - start >= _PERIOD
+def _done(now):
+    return now.t >= _PERIOD
 
 
 def _beat(now):
     """(name, fraction-or-tau). 'blast' returns tau in SECONDS (for the physics); others a 0..1 frac."""
-    t = now - _start[0]
+    t = now.t
     if t < _LOOK:                                   return "look", t / _LOOK
     t -= _LOOK
     if t < _ARM:                                    return "arm", t / _ARM
@@ -139,7 +136,7 @@ _sim = {"start": None, "wall": None, "stime": 0.0, "pacc": 0.0,
 def _reset(now):
     np.random.seed(20240617)                            # deterministic so the showcase GIF is stable
     zero = lambda: np.zeros((_NY, _NX))                 # noqa: E731
-    _sim.update(start=_start[0], wall=now, stime=0.0, pacc=0.0, w=zero(), T=zero(), geom=None,
+    _sim.update(seed=now.seed, wall=now, stime=0.0, pacc=0.0, w=zero(), T=zero(), geom=None,
                 psi=zero(), u=zero(), v=zero(), p=np.zeros((0, 3)))
 
 
@@ -181,7 +178,7 @@ def _speed(tau):
 
 def _advance(now, tau):
     """Step the fluid from the last frame to now, warping wall-time into sim-time via CFL-safe substeps."""
-    if _sim["start"] != _start[0] or _sim["wall"] is None or now < _sim["wall"]:
+    if _sim.get("seed") != now.seed or _sim["wall"] is None or now < _sim["wall"]:
         _reset(now)
     dt_wall = now - _sim["wall"]
     _sim["wall"] = now
@@ -467,11 +464,10 @@ def _selfcheck():
             and F[(ft > 0.05) & (ft < 0.25)].min() < 0.6), "double-flash (two peaks + opacity dip)"
 
     # -- drive the fluid solver over a full blast and measure the invariants --
-    _start[0] = 0.0
     wmax = pmax = divrel = cfl = oddf = 0.0
     y0 = ymin = None
     for i in range(int(_PERIOD * 30) + 5):
-        now = i / 30.0
+        now = Now(i / 30.0, i / 30.0, 0)
         name, x = _beat(now)
         if name != "blast":
             continue

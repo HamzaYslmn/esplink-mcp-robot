@@ -350,18 +350,7 @@ def _mood():
     return "attentive"
 
 
-class _Searching:
-    """An Action whose face follows the story (the engine reads `mood` every frame)."""
-    name = "searching"
-    pose = staticmethod(_pose)
-    overlay = staticmethod(_overlay)
-    expired = None
-    still = False
-    tic = None
-    mood = property(lambda self: _mood())
-
-
-ACTION = _Searching()
+ACTION = Action("searching", mood=_mood, pose=_pose, overlay=_overlay)   # the face follows the story
 
 
 if __name__ == "__main__":                        # ponytail check: every search fits its slot and ends on the find

@@ -21,6 +21,7 @@ import random
 import numpy as np
 
 from ..primitives import frame
+from ..spec import Vibe
 
 _W, _H = 128, 64
 _VX, _VY = 64.0, 32.0                         # vanishing point
@@ -142,15 +143,8 @@ def _pose(now):
     return 0.0, 0.0, 1.0
 
 
-class _Warp:
-    """A Vibe whose face follows the phase (the engine reads  every frame)."""
-    name = "warp"
-    pose = staticmethod(_pose)
-    overlay = staticmethod(_overlay)
-    expired = None
-    still = False
-    tic = None
-    mood = property(lambda self: _FACE[_phase(_s["last"])[0]] if _s["t0"] is not None else "neutral")
+def _mood():   # the face follows the phase
+    return _FACE[_phase(_s["last"])[0]] if _s["t0"] is not None else "neutral"
 
 
-VIBE = _Warp()
+VIBE = Vibe("warp", mood=_mood, pose=_pose, overlay=_overlay)

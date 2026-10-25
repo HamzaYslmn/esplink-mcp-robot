@@ -14,6 +14,8 @@ import threading
 
 from PIL import ImageFont
 
+from ..spec import Widget
+
 _SEGS = 5
 
 try:
@@ -137,23 +139,16 @@ def _pose(now):
     return 0.0, -6.0 + math.sin(now * 0.8) * 0.6, 0.55        # on battery: lower, squashed -> weary
 
 
-class _Gauge:
-    """Duck-typed Widget whose `mood` tracks the charge state -- the engine re-reads it each frame, so
-    Pip looks focused while charging and tired on battery. (A frozen Widget can't carry a live mood.)"""
-    name = "battery_gauge"
-    pose, overlay = staticmethod(_pose), staticmethod(_overlay)
-    expired = tic = None
-    still = False
-
-    @property
-    def mood(self):
-        if os.getenv("PIP_HUD_DIM"):
-            return "standby"
-        with _lock:
-            chg, lvl = _state["chg"], _state["lvl"]
-        if chg:
-            return "happy" if lvl is not None and lvl >= 0.97 else "focused"   # full -> happy; topping up -> focused
-        return "tired"                                                         # on battery -> weary
+def _mood():
+    """The face tracks the charge state (the engine asks every frame): focused while charging,
+    happy once full, tired on battery."""
+    if os.getenv("PIP_HUD_DIM"):
+        return "standby"
+    with _lock:
+        chg, lvl = _state["chg"], _state["lvl"]
+    if chg:
+        return "happy" if lvl is not None and lvl >= 0.97 else "focused"   # full -> happy; topping up -> focused
+    return "tired"                                                         # on battery -> weary
 
 
-WIDGET = _Gauge()
+WIDGET = Widget("battery_gauge", mood=_mood, pose=_pose, overlay=_overlay)

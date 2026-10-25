@@ -10,16 +10,6 @@ _LOCK = 0.55                                  # the converge-and-snap; past it t
 _L, _T, _R, _B = 19, 10, 109, 53             # lock-box frame -- a margin OUTSIDE the eyes
 _AX, _AY = 87, 32                             # the aiming (right) eye centre -- where the sight sits
 _AR, _CUT = 13, 10                             # round aiming eye, top trimmed flat by _CUT = a focused lid
-_state = {"start": None, "last": -1.0}        # a >0.5s gap means a fresh lock-on
-
-
-def _elapsed(now):
-    """Seconds since this lock-on began (a gap restarts the clock)."""
-    s = _state
-    if s["start"] is None or now - s["last"] > 0.5 or now < s["last"]:
-        s["start"] = now
-    s["last"] = now
-    return now - s["start"]
 
 
 def _over(s):                                 # ease-out with a little overshoot -> a snappy slam
@@ -56,7 +46,7 @@ def _corners(d, f, n=8):                      # L-brackets lerp from screen corn
 
 
 def _overlay(d, W, H, now, ox=0.0, oy=0.0):
-    t = _elapsed(now)
+    t = now.t
     _aim_eyes(d)                                            # the one-eyed aim face, every frame
     if t < _LOCK:                                           # LOCK: brackets slam in, pupil crosshair tightens
         s = smoothstep(t / _LOCK)

@@ -7,20 +7,10 @@ _CURSOR = 1.0                                          # blinking-cursor beat
 _WIPE = 1.6                                            # scanline reveal
 _DONE = _CURSOR + _WIPE                                # fully drawn -> end
 
-_state = {"start": None, "last": -1.0}                 # a >0.5s gap means a fresh boot
-
-
-def _elapsed(now):
-    """Seconds since this boot began (a gap restarts the clock)."""
-    s = _state
-    if s["start"] is None or now - s["last"] > 0.5 or now < s["last"]:
-        s["start"] = now
-    s["last"] = now
-    return now - s["start"]
 
 
 def _overlay(d, W, H, now, ox=0.0, oy=0.0):
-    t = _elapsed(now)
+    t = now.t
     if t < _CURSOR:                                    # blank screen + blinking block cursor
         d.rectangle([0, 0, W - 1, H - 1], fill=0)
         if int(now * 2) % 2 == 0:
@@ -32,8 +22,8 @@ def _overlay(d, W, H, now, ox=0.0, oy=0.0):
     # t >= _DONE: fully drawn -> _expired hands back to the normal face
 
 
-def _expired(now, start):
-    return _elapsed(now) >= _DONE
+def _expired(now):
+    return now.t >= _DONE
 
 
 VIBE = Vibe("boot_draw", mood="neutral", overlay=_overlay, expired=_expired)

@@ -16,18 +16,15 @@ _CX, _CY = 64, 32
 _LEYE, _REYE = 41, 87                              # eye centres (engine defaults)
 _CHARGE, _FLASH, _DARK, _BOOT = 0.24, 0.10, 0.22, 1.04
 _PERIOD = _CHARGE + _FLASH + _DARK + _BOOT         # ~1.6s, one-shot
-_start = [0.0]                                     # this run's start clock (captured each frame by _done)
 
 
-def _done(now, start):
-    """Self-end after one ~1.6s pass; stash the start so the beats phase off elapsed time."""
-    _start[0] = start
-    return now - start >= _PERIOD
+def _done(now):
+    return now.t >= _PERIOD
 
 
 def _beat(now):
     """(name, 0..1 fraction) of the beat we're in, measured from this run's start."""
-    t = now - _start[0]
+    t = now.t
     if t < _CHARGE:                          return "charge", t / _CHARGE
     if t < _CHARGE + _FLASH:                 return "flash", (t - _CHARGE) / _FLASH
     if t < _CHARGE + _FLASH + _DARK:         return "dark", (t - _CHARGE - _FLASH) / _DARK

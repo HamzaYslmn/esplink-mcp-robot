@@ -312,7 +312,7 @@ def _overlay(d, W, H, now, ox=0.0, oy=0.0):
      }.get(s["phase"], lambda: None)()                         # 'done' -> draw nothing, _expired clears it
 
 
-def _expired(now, start):
+def _expired(now):
     return _S.get("phase") == "done"                           # one full run then back to the normal face
 
 
@@ -451,7 +451,7 @@ def _selfcheck():
     assert order[:5] == ["calm", "wave", "surge", "short", "dead"], f"bad start: {order}"
     assert order[-2:] == ["reboot", "done"], f"bad end: {order}"
     assert all(p in ("dead", "wakefail") for p in order[5:-2]), f"only error/retry before boot: {order}"
-    assert order.count("calm") == 1 and _expired(0.0, 0.0), "must play once then self-end"
+    assert order.count("calm") == 1 and _expired(0.0), "must play once then self-end"
     secs = {k: v / 30 for k, v in dur.items()}
     assert secs["dead"] >= _T_ROLL - 0.1, f"dead ended before its first attempt: {secs['dead']:.1f}s"
     print(f"solarflare ok: RC discharge die@{t_die:.1f}s, recharge->{chg[-1]:.2f}; gooey wave; "

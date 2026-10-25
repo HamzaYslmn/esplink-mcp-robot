@@ -101,9 +101,9 @@ def _overlay(d, W, H, now, ox=0.0, oy=0.0):   # paint this beat's corruption ont
         effect(d, frame(d), W, H, now, f * 7 + 1, _AMP)
 
 
-def _expired(now, start):   # roll a die each 3s window; a 50% hit ends the fit, seeded by the start
-    k = int((now - start) / _ROLL)                          # window index (0 = before the first roll)
-    return k >= 1 and rand(start + k * 7.31) < _HEAL_ODD
+def _expired(now):   # roll a die each 3s window; a 50% hit ends the fit, seeded per play
+    k = int(now.t / _ROLL)                                  # window index (0 = before the first roll)
+    return k >= 1 and rand(now.seed + k * 7.31) < _HEAL_ODD
 
 
 ACTION = Action("glitch", mood="scared", pose=_pose, overlay=_overlay, expired=_expired)

@@ -27,7 +27,6 @@ _GLYPHS = tuple((ch, c * _CELL_W, r * _CELL_H)         # (char, x, y) of every n
 _IN, _HOLD, _OUT = 1.0, 1.0, 1.0                       # s: assemble / hold the face / scatter -- 3s total
 _DUR = _IN + _HOLD + _OUT
 _FLY = 30.0                                            # px a glyph flies in from while assembling
-_start = [0.0]                                         # this run's start clock (captured each frame by _done)
 
 try:
     _F = ImageFont.load_default(size=10)
@@ -35,15 +34,13 @@ except TypeError:                       # ancient Pillow
     _F = ImageFont.load_default()
 
 
-def _done(now, start):
-    """Self-end after one ~3s pass; also stash the start so pose/overlay can phase off elapsed time."""
-    _start[0] = start
-    return now - start >= _DUR
+def _done(now):
+    return now.t >= _DUR
 
 
 def _phase(now):
     """0 = solid eyes, 1 = full ASCII face; ramps up, plateaus through the hold, ramps back."""
-    t = now - _start[0]
+    t = now.t
     if t < _IN:
         return smoothstep(t / _IN)
     t -= _IN

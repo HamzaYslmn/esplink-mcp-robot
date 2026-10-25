@@ -53,16 +53,6 @@ def _glyph_img(ch):             # one white-on-black glyph bitmap, trimmed to it
 
 _GLYPHS = {c: _glyph_img(c) for c in dict.fromkeys(_STRIP + _WIN_CHAR)}
 
-_state = {"start": None, "last": -1.0}   # a >0.5s gap means a fresh run
-
-
-def _elapsed(now):
-    """Seconds since this run began (a gap restarts the clock)."""
-    s = _state
-    if s["start"] is None or now - s["last"] > 0.5 or now < s["last"]:
-        s["start"] = now
-    s["last"] = now
-    return now - s["start"]
 
 
 def _won(seed):                 # a fresh spin wins with _WIN_ODDS odds
@@ -193,8 +183,7 @@ def _draw_coins(d, W, H, ct, seed):
 
 
 def _overlay(d, W, H, now, ox=0.0, oy=0.0):
-    t = _elapsed(now)
-    seed = _state["start"] or now
+    t, seed = now.t, now.seed
     img = frame(d)
     lx = (W - (2 * _EYE_W + _GAP)) // 2                  # left-eye slot origin
     cy = (H - _EYE_H) // 2 + _EYE_H / 2 + oy             # eye centre (rides the gaze)
@@ -206,9 +195,8 @@ def _overlay(d, W, H, now, ox=0.0, oy=0.0):
         _draw_coins(d, W, H, t - _RESULT, seed)
 
 
-def _expired(now, start):       # self-end after the coins rain (win) or a short miss
-    t = _elapsed(now)
-    return t >= (_END_WIN if _won(_state["start"]) else _END_LOSE)
+def _expired(now):              # self-end after the coins rain (win) or a short miss
+    return now.t >= (_END_WIN if _won(now.seed) else _END_LOSE)
 
 
 VIBE = Vibe("jackpot", mood="neutral", overlay=_overlay, expired=_expired, still=True)

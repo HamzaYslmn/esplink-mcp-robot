@@ -17,18 +17,15 @@ _LEYE, _REYE = 41, 87                              # eye centres (engine default
 _CHARGE, _VIB, _BOOM, _COOL = 3.8, 0.9, 1.3, 1.4
 _PERIOD = _CHARGE + _VIB + _BOOM + _COOL           # ~7.4s, one-shot
 _ORB_MAX = 13
-_start = [0.0]                                     # this run's start clock (captured each frame by _done)
 
 
-def _done(now, start):
-    """Self-end after one ~7s pass; also stash the start so the beats phase off elapsed time."""
-    _start[0] = start
-    return now - start >= _PERIOD
+def _done(now):
+    return now.t >= _PERIOD
 
 
 def _beat(now):
     """(name, 0..1 fraction) of the beat we're in, measured from this run's start."""
-    t = now - _start[0]
+    t = now.t
     if t < _CHARGE:                       return "charge", t / _CHARGE
     if t < _CHARGE + _VIB:                return "vib", (t - _CHARGE) / _VIB
     if t < _CHARGE + _VIB + _BOOM:        return "boom", (t - _CHARGE - _VIB) / _BOOM

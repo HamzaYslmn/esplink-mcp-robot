@@ -14,9 +14,6 @@ _ICICLES = (((-9, 8, 4), (0, 13, 5), (9, 6, 3)),  # per eye: (x offset, length, 
             ((-8, 6, 3), (2, 12, 5), (10, 9, 4)))
 _DRIP = 2.8                                       # s per drip, from each eye's longest icicle
 
-_state = {"start": None, "last": -1.0}            # a >0.5s gap = a fresh freeze
-
-
 def _paint(d, x, y, w, h, r, ir):                 # one cold glint: two short parallel slashes
     if h < 10:
         return
@@ -51,11 +48,7 @@ def _drip(d, x, tip, phase, H):
 
 
 def _decor(d, W, H, now, ox=0.0, oy=0.0):
-    st = _state
-    if st["start"] is None or now - st["last"] > 0.5 or now < st["last"]:
-        st["start"] = now                         # fresh freeze
-    st["last"] = now
-    f = smoothstep((now - st["start"]) / _FREEZE_S)
+    f = smoothstep(now.t / _FREEZE_S)              # icicles grow in from each fresh freeze
     for e, (ex, ey) in enumerate(_EYES):
         cx, top, base = ex + ox, ey + oy - _HALF_H, ey + oy + _HALF_H
         for xx in range(int(cx) - 15, int(cx) + 16):   # a thin wavy ice drape on the lower edge

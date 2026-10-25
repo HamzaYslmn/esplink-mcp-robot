@@ -31,7 +31,9 @@ folders — `faces/moods/` `gestures/` `reactions/` `actions/` `vibes/` `widgets
 a single `MOOD`/`GESTURE`/`REACTION`/`ACTION`/`VIBE`/`WIDGET` — see `faces/spec.py`: a held mood,
 a one-shot move, or a looping overlay that's a task status (action), pure decoration (vibe), or
 live data (widget)), then list its name in that folder's `__init__.py` order tuple
-(that tuple is the curated order — menus, showcase, LLM enum). Shared bits: `painters.py`
+(that tuple is the curated order — menus, showcase, LLM enum). Effect fns get the clock as a
+`spec.Now` — a float plus `now.t` (seconds into this play) and `now.seed` (fresh per play) — so a
+one-shot never tracks its own start; a reaction can draw a prop via `overlay`. Shared bits: `painters.py`
 (lid carvers), `primitives.py` (draw/math), `engine.py` (renderer). Eyeball a face
 headless with `uv run docs/make_gif.py <face>` (writes a 5-frame `docs/<face>_preview.png`,
 gitignored); no args rebuilds the showcase `docs/pip-eyes.gif`.

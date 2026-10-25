@@ -27,6 +27,16 @@ def rand(*xs):
     return (math.sin(sum(x * k for x, k in zip(xs, _NOISE))) * 43758.5453) % 1.0
 
 
+def look(dx, dy, bias=0.0):
+    """A glance motion: dart to (dx, dy), parallax-swell the near eye, hold, then return.
+    Returns a gesture motion fn(p, env); shared by the look_left/right/up/down gestures."""
+    def fn(p, e):
+        hold = smoothstep(min(p / 0.22, 1.0, (1.0 - p) / 0.20))   # quick dart out, hold, quick return
+        s = 1.0 - 0.12 * hold                 # mild foreshorten (parallax carries the turn)
+        return dx * hold, dy * hold, 0.0, s, s, bias * hold
+    return fn
+
+
 def lid_openness(u, reps, close=0.34):
     """Eyelid openness over a blink, 1->0->1 x reps; asymmetric -- snaps shut, eases open."""
     seg = (max(0.0, min(1.0, u)) * reps) % 1.0

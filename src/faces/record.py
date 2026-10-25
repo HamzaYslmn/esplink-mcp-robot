@@ -13,7 +13,6 @@ from PIL import Image
 from . import PLAYABLE   # one-shot pool -> dur, to re-fire gestures across the clip
 from .engine import EyeEngine
 
-W, H = 128, 64
 FPS = 24      # capture / playback frame rate (matches the real panel)
 SCALE = 3     # pixel zoom of the output GIF
 
@@ -23,10 +22,8 @@ def record_gif(name, *, seconds=30.0, fps=FPS, scale=SCALE, out=None):
     two dispatch pools the engine uses, so every folder (moods/gestures/reactions/actions/vibes/
     widgets) just works -- no per-kind switch to keep in sync."""
     clock = [0.0]
-    eyes = EyeEngine(lambda _img: None, width=W, height=H, fps=fps, clock=lambda: clock[0])
+    eyes = EyeEngine(lambda _img: None, fps=fps, clock=lambda: clock[0])
     eyes.reset_timers(clock[0])
-    eyes.set_activity("idle")
-    eyes.set_mood("neutral")
     eyes.show(name)                      # held mood / loop / one-shot -- routed by the engine
 
     period = PLAYABLE[name].dur if name in PLAYABLE else None   # re-fire one-shots to fill the clip
@@ -37,7 +34,7 @@ def record_gif(name, *, seconds=30.0, fps=FPS, scale=SCALE, out=None):
         if period and clock[0] >= next_fire:
             eyes.play_gesture(name)
             next_fire += period
-        frame = eyes.step(clock[0]).convert("L").resize((W * scale, H * scale), Image.NEAREST)
+        frame = eyes.step(clock[0]).convert("L").resize((eyes.W * scale, eyes.H * scale), Image.NEAREST)
         frames.append(frame)
 
     out = Path(out) if out else Path.cwd() / f"{name}.gif"

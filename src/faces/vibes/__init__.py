@@ -12,6 +12,7 @@ _ORDER = (
     "boot_draw", "barcode_scan", "target_lock", "target_release", "thermal_scan",  # scanners / boot
     "defrag_blocks", "energy_blast", "nuke", "game_of_life", "tesseract", "quantum",   # machine work
     "jackpot", "dice_roll", "snake",                                   # games
+    "naruto_eyes",                                                     # anime
     "campfire", "rain_window", "snore", "smoking", "zen", "overheated",   # cozy / ambient
 )
 

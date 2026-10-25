@@ -18,6 +18,8 @@ from pathlib import Path
 
 from PIL import ImageFont
 
+from ..spec import Widget
+
 _FILE = Path.home() / ".claude" / "cc_usage.json"        # statusline hook writes here, we read it
 _PERIOD = 2.0                                             # s between file re-reads
 
@@ -119,14 +121,5 @@ def _overlay(d, W, H, now, ox=0.0, oy=0.0):
     _gauge(d, px, 34, pw_, "WK", pw, rw)
 
 
-class _Usage:
-    """Duck-typed Widget owning the full screen; mood only sets panel brightness (eyes are erased)."""
-    name = "cc_usage"
-    pose = None
-    overlay = staticmethod(_overlay)
-    expired = tic = None
-    still = False
-    mood = property(lambda self: "standby" if os.getenv("PIP_HUD_DIM") else "neutral")
-
-
-WIDGET = _Usage()
+# owns the full screen; the mood only sets panel brightness (the eyes are erased)
+WIDGET = Widget("cc_usage", mood=lambda: "standby" if os.getenv("PIP_HUD_DIM") else "neutral", overlay=_overlay)

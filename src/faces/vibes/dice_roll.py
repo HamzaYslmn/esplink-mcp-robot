@@ -1,6 +1,5 @@
 """A d20 -- rolls once: the hex die tumbles for a beat, settles on a number it holds for five
-seconds, then hands the face back to normal. A gap (>0.5s with no frame) restarts a fresh roll,
-so re-firing the activity rolls again. The eyes shrink and glance up at the die."""
+seconds, then hands the face back to normal. Each fire rolls a fresh number. The eyes shrink and glance up at the die."""
 import math
 
 from PIL import ImageFont
@@ -17,19 +16,6 @@ try:
 except TypeError:                   # ancient Pillow
     _F = ImageFont.load_default()
 
-_state = {"start": None, "last": -1.0, "result": 20}    # one roll per activation
-
-
-def _elapsed(now):
-    """Seconds since this roll began; a gap (re-fire) starts a fresh roll + result."""
-    s = _state
-    if s["start"] is None or now - s["last"] > 0.5 or now < s["last"]:
-        s["start"] = now
-        s["result"] = 1 + int(rand(int(now * 1000)) * 20)      # roll the die once, fixed for this play
-    s["last"] = now
-    return now - s["start"]
-
-
 def _pose(now):
     return 0.0, 9.0, 0.55           # small eyes, low, looking up at the die
 
@@ -41,22 +27,22 @@ def _hexagon(d, cx, cy, r):
 
 
 def _overlay(d, W, H, now, ox=0.0, oy=0.0):
-    t = _elapsed(now)
+    t = now.t
     cx, cy = W // 2, 12
     if t < _ROLL:                                          # tumbling: number + position flicker
         n = 1 + int(rand(int(now * 18)) * 20)
         jx = (rand(int(now * 18), 1) - 0.5) * 3
         jy = (rand(int(now * 18), 2) - 0.5) * 3
     else:                                                  # settled, held for _SHOW
-        n = _state["result"]
+        n = 1 + int(rand(now.seed) * 20)                 # rolled once per play
         jx = jy = 0.0
     _hexagon(d, cx + jx, cy + jy, 10)
     s = str(n)
     d.text((cx + jx - d.textlength(s, font=_F) / 2, cy + jy - 6), s, font=_F, fill=1)
 
 
-def _expired(now, start):
-    return _elapsed(now) >= _DONE                          # roll + show done -> back to natural
+def _expired(now):
+    return now.t >= _DONE                          # roll + show done -> back to natural
 
 
 VIBE = Vibe("dice_roll", mood="neutral", pose=_pose, overlay=_overlay, expired=_expired, still=True)
