@@ -18,11 +18,11 @@ One command adds Pip to every project — no checkout needed. Pick one:
 ```bash
 # With an ESP32 — eyes on the real OLED, over Bluetooth
 claude mcp add esplink-buddy --scope user -- \
-  uvx --from git+https://github.com/HamzaYslmn/esp-bridge-mcp-robot esplink-buddy
+  uvx --from git+https://github.com/HamzaYslmn/esplink-mcp-robot esplink-buddy
 
 # Without hardware — eyes in an on-screen OLED window
 claude mcp add esplink-buddy --scope user -- \
-  uvx --from git+https://github.com/HamzaYslmn/esp-bridge-mcp-robot esplink-buddy --emulate
+  uvx --from git+https://github.com/HamzaYslmn/esplink-mcp-robot esplink-buddy --emulate
 ```
 
 Claude Code then calls Pip's `face` tool as it works (pass any mood, activity, vibe or widget

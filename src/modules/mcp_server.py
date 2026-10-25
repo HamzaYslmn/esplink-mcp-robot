@@ -38,7 +38,7 @@ _TITLES = {"face": "Set Pip's face", "notify": "Get the human's attention"}
 def serve(robot, name="esplink-buddy"):
     """Run the FastMCP server over stdio so Claude Code can drive Pip (and its board)."""
     mcp = FastMCP(name, instructions=INSTRUCTIONS, version=version("esplink-buddy"),
-                  website_url="https://github.com/HamzaYslmn/esp-bridge-mcp-robot")
+                  website_url="https://github.com/HamzaYslmn/esplink-mcp-robot")
     for fn in robot.tools:
         if fn.__name__ in _TITLES:              # pin shortcuts are the Ollama brain's; MCP gets board_*
             mcp.tool(fn, annotations=_SCREEN.model_copy(update={"title": _TITLES[fn.__name__]}))

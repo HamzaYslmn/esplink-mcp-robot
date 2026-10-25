@@ -331,7 +331,7 @@ _RETRY = 600.0           # s before retrying the daily fetch if NOAA was unreach
 
 
 def _get(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "esplink-buddy (github.com/HamzaYslmn/esp-bridge-mcp-robot)"})
+    req = urllib.request.Request(url, headers={"User-Agent": "esplink-buddy (github.com/HamzaYslmn/esplink-mcp-robot)"})
     with urllib.request.urlopen(req, timeout=10) as r:
         return json.load(r)
 
