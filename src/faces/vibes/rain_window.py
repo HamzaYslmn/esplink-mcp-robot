@@ -10,7 +10,8 @@ fresh on every activation, so no two showers look alike. One set of rules, follo
 - Glass: beads come only from impacts and grow only by merging. Surface tension holds a bead until
   its weight beats it; then gravity wins against drag. Runners sweep up beads in their path
   (heavier -> faster), catch on specks of dirt, get nudged by the wind, and prefer the wet tracks
-  earlier runners left, so rivulets form and get reused. Still beads evaporate -- they shrink away.
+  earlier runners left, so rivulets form and get reused. Beads evaporate by the d^2 law (area
+  shrinks steadily), so specks vanish in a blink and a stalled bead clears in a few seconds.
 - Sill: runners pour into a thin film of water along the bottom. The sill tilts a little (a random
   side each run): the film spreads, flows downhill -- ripples show which way -- and drains off the
   edge, so it never just piles up.
@@ -31,7 +32,7 @@ _W, _H = 128, 64
 _G_GLASS, _DRAG = 180.0, 6.0                      # px/s^2 gravity on the glass, 1/s viscous drag
 _G_AIR = 300.0                                    # px/s^2 for splash droplets in flight
 _R_PIN = 1.8                                      # surface tension holds a bead smaller than this
-_EVAP = 0.06                                      # radius lost per second by a bead sitting still
+_EVAP = 0.8                                       # px^2/s of area every bead loses (d^2 law): a stalled 1.8 px bead ~4 s
 _RAIN_RATE = 20.0                                 # drops/s at full intensity
 _HIT_P = 0.25                                     # chance a near drop hits the pane
 _MAX = 40                                         # beads on the pane at once
@@ -133,10 +134,10 @@ def _step_glass(dt, wind):
     s = _s
     s["wet"] *= math.exp(-dt / 20.0)              # old tracks dry over ~20 s
     for b in s["beads"]:
+        b["r"] = math.sqrt(max(0.0, b["r"] ** 2 - _EVAP * dt))   # every bead evaporates: small ones go first
         if b["r"] < _R_PIN or b["pin"] > 0:       # still: held by surface tension (or caught on dirt)
             b["pin"] = max(0.0, b["pin"] - dt)
             b["vy"] = 0.0
-            b["r"] -= _EVAP * dt                  # ...and slowly evaporating
             continue
         a = _G_GLASS * (1 - (_R_PIN / b["r"]) ** 2) - _DRAG * b["vy"]   # weight past surface tension, minus drag
         b["vy"] = max(0.0, b["vy"] + a * dt)
@@ -157,7 +158,7 @@ def _step_glass(dt, wind):
         b["trail"] += dy
         if b["trail"] > 2.5 and _rng.random() < 0.7:   # sheds a tiny bead behind it, losing a little mass
             b["trail"], b["r"] = 0.0, math.sqrt(max(0.0, b["r"] ** 2 - 0.25))
-            s["beads"].append(_bead(b["x"], b["y"] - b["r"] - 1.2, 0.55))
+            s["beads"].append(_bead(b["x"], b["y"] - b["r"] - 1.2, 0.75))   # a short-lived trail dot
         if b["y"] > _H - 3:                       # pours into the sill's film
             xi = int(b["x"])
             s["sill"][max(0, xi - 3):xi + 4] += b["r"] ** 2 * 0.15
