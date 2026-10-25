@@ -413,15 +413,15 @@ serial = [
 
 [[package]]
 name = "esplink"
-version = "3.0.0"
+version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "bleak" },
     { name = "pyserial" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/67/b4/708ccb34d92000e938a1ed9798d387127e503c72a2cb74690e70f0a4ec14/esplink-3.0.0.tar.gz", hash = "sha256:0157dfc11b50a53a03b49a146203949dc70e8c76f9cb84c7e7d110889bb72f7d", size = 2763139, upload-time = "2026-10-25T11:40:46.907Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0c/19/751cf345bea456c5b6e8ccd1533040f6929a9fabf3c2c1b3809d5f450966/esplink-3.1.0.tar.gz", hash = "sha256:7037b19fbc85ae166d188cc9fc1f63c01c1b54618215ccf16cb99168ee6c8f64", size = 2763164, upload-time = "2026-10-25T16:16:08.726Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bd/88/d9e796f0683f3b306b93c18a65879351abdfe590b235fa3c4dcd10047c8d/esplink-3.0.0-py3-none-any.whl", hash = "sha256:973da61bd9135164192b08d0c9cab38ce00dee5a86931c9357d07591a2cd1cbf", size = 2545515, upload-time = "2026-10-25T11:40:45.061Z" },
+    { url = "https://files.pythonhosted.org/packages/ac/eb/2da9f0755cdb9bd396ab8292eeea77edc8a08e1b7c80553edfc81beeaeb7/esplink-3.1.0-py3-none-any.whl", hash = "sha256:c665305b5e2d19ffee0664365d3cc721e99c802f3fedd8e32f90ad9281fd5235", size = 2543826, upload-time = "2026-10-25T16:16:06.589Z" },
 ]
 
 [package.optional-dependencies]
@@ -446,7 +446,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "esplink", extras = ["all"], specifier = ">=3.0.0" },
+    { name = "esplink", extras = ["all"], specifier = ">=3.1.0" },
     { name = "fastmcp", specifier = ">=4.1.3" },
     { name = "numpy", specifier = ">=2.5.4" },
     { name = "ollama", specifier = ">=0.6.3" },
