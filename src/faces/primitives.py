@@ -54,3 +54,10 @@ def frame(d):
     """The live PIL '1' buffer behind an effect's ImageDraw -- for overlays that read pixels back
     (datamosh, reel-cut). None-safe for any odd/headless draw target."""
     return getattr(d, "_image", None)
+
+
+def flip(d, x, y):
+    """Invert one pixel, so a speck (rain, snow, a splash) shows on the black screen AND over a lit eye."""
+    img, x, y = frame(d), int(round(x)), int(round(y))
+    if img is not None and 0 <= x < img.width and 0 <= y < img.height:
+        img.putpixel((x, y), 0 if img.getpixel((x, y)) else 1)

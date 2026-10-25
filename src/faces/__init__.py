@@ -10,7 +10,7 @@ Each effect is ONE self-contained file in a folder, named by what it IS:
 Reactions reuse the gesture mechanic; vibes and widgets the action mechanic (see spec.py), so the
 engine dispatches just two pooled registries: PLAYABLE (one-shots) and LOOPING (loops).
 Each registry is an ordered dict (curated in its folder's __init__). Shared bits: spec.py
-(the schema), primitives.py (pure math/draw -- ease/smoothstep/lid_openness/rounded_rect/rand/
+(the schema), primitives.py (pure math/draw -- ease/smoothstep/lid_openness/rounded_rect/rand/flip/
 frame), painters.py (lid carvers + the twinkle motif), engine.py (the renderer + the `look`
 glance helper). Reach for those shared helpers rather than re-rolling them per file: e.g. all
 pseudo-randomness goes through one `rand()`. Single-use helpers live in their own effect file.

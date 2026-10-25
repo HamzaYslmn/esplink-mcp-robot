@@ -11,11 +11,11 @@ _ORDER = (
     # focus / calm
     "focused", "wired", "chill",
     # sad / anxious / low
-    "sad", "gloomy", "worried", "nervous", "despair", "scared", "tired", "sleepy",
+    "sad", "gloomy", "worried", "nervous", "despair", "scared", "frozen", "tired", "sleepy",
     # angry / wary
     "angry", "furious", "devil", "suspicious", "skeptical",
     # dazed / goofy / off
-    "surprised", "dumb", "confused", "disoriented", "bored", "dead",
+    "surprised", "dumb", "confused", "disoriented", "bored", "dead", "ghost",
     # baseline
     "neutral",
 )
